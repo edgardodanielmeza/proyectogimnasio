@@ -1,0 +1,365 @@
+El error que estás viendo ocurre porque hay un problema con las dependencias opcionales de npm, específicamente con el paquete @rollup/rollup-win32-x64-msvc. Sigue estos pasos para solucionarlo en Windows con WAMP:
+
+Pasos para resolver el error en español:
+Elimina node_modules y package-lock.json
+Abre la terminal (cmd) en la carpeta de tu proyecto (C:\wamp64\www\gimnasio) y ejecuta:
+
+cmd
+rmdir /s /q node_modules
+del package-lock.json
+Limpia la caché de npm
+
+cmd
+npm cache clean --force
+Vuelve a instalar las dependencias
+
+cmd
+npm install
+Ejecuta el proyecto de nuevo
+
+cmd
+npm run dev
+Si el error persiste:
+Prueba reinstalando Rollup manualmente:
+
+cmd
+npm install rollup @rollup/rollup-win32-x64-msvc --save-dev
+Usa Yarn en lugar de npm (si puedes):
+
+cmd
+yarn install
+yarn dev
+Verifica la versión de Node.js:
+Algunos proyectos no funcionan bien con Node.js v22.x. Prueba con una versión LTS (como v18.x o v20.x).
+Puedes cambiar de versión usando nvm (Node Version Manager para Windows).
+
+Posible causa:
+El error ocurre porque npm a veces falla al instalar dependencias opcionales en Windows.
+
+Vite depende de Rollup, y si no se instala correctamente, aparece este problema.
+
+Con estos pasos, debería funcionar. Si sigue fallando, revisa si hay algún error adicional en la consola. ¡Avísame si necesitas más ayuda! 🚀
+
+[Tue Jun 03 13:54:01.626229 2025] [mpm_winnt:notice] [pid 8612:tid 404] AH00422: Parent: Received shutdown signal -- Shutting down the server.
+[Tue Jun 03 13:54:03.685706 2025] [mpm_winnt:notice] [pid 10380:tid 420] AH00364: Child: All worker threads have exited.
+[Tue Jun 03 13:54:04.690767 2025] [mpm_winnt:notice] [pid 8612:tid 404] AH00430: Parent: Child process 10380 exited successfully.
+Parece que Apache (en WAMP) se está cerrando debido a una señal de apagado. Esto puede ocurrir por varias razones, pero no necesariamente está relacionado con el error anterior de npm run dev.
+
+Posibles causas y soluciones:
+1. WAMP se cerró manualmente o hubo un conflicto
+Si hiciste clic en "Stop" en el menú de WAMP o reiniciaste el servicio manualmente, este mensaje es normal.
+
+Solución: Vuelve a iniciar WAMP (haz clic en "Start").
+
+2. Conflicto de puertos (Apache no puede iniciar)
+Si otro programa (como Skype, IIS o XAMPP) está usando el puerto 80 (HTTP) o 443 (HTTPS), Apache no podrá arrancar.
+
+Solución:
+
+Cierra programas que usen esos puertos (como Skype).
+
+O cambia el puerto de Apache:
+
+Abre httpd.conf (en C:\wamp64\bin\apache\apacheX.X.XX\conf).
+
+Busca Listen 80 y cámbialo a Listen 8080.
+
+Reinicia WAMP.
+Ahora accede a http://localhost:8080.
+
+3. Error en la configuración de Apache o PHP
+Si modificaste algún archivo de configuración (httpd.conf, php.ini), puede que Apache falle al iniciar.
+
+Solución:
+
+Usa el menú de WAMP:
+
+WAMP Icon → Apache → httpd.conf → Test Configuration (para ver errores).
+
+O revisa los logs en C:\wamp64\logs\apache_error.log.
+
+4. Windows apagó el servicio por falta de recursos
+Si tu PC tiene poca RAM o CPU, Windows puede cerrar servicios.
+
+Solución:
+
+Reinicia tu computadora.
+
+Verifica que no haya programas consumiendo muchos recursos.
+
+¿Qué hacer ahora?
+Intenta reiniciar WAMP (haz clic en el ícono de WAMP → "Restart All Services").
+
+Si Apache no inicia, revisa los logs (C:\wamp64\logs\apache_error.log).
+
+Si el problema persiste, reinstala WAMP (a veces una instalación corrupta causa esto).
+
+Relación con npm run dev
+Este mensaje de Apache no está relacionado directamente con el error anterior de npm run dev.
+
+Si estabas corriendo un proyecto frontend con Vite, asegúrate de que:
+
+Vite use un puerto diferente (ej: 5173).
+
+WAMP (Apache) esté corriendo en 80 o 8080.
+
+Si necesitas más ayuda, dime qué acción realizaste antes de que apareciera este mensaje. ¡Saludos! 🚀
+
+There is a syntax error in Apache conf files.
+AH00526: Syntax error on line 15 of C:/wamp64/bin/apache/apache2.4.62.1/conf/extra/httpd-vhosts.conf:
+ServerName takes one argument, The hostname and port of the server
+El error que estás viendo en Apache (httpd-vhosts.conf) indica que hay un problema de sintaxis en la configuración de tus Virtual Hosts.
+
+Causa del error:
+En la línea 15 del archivo httpd-vhosts.conf, hay una declaración ServerName mal escrita (falta el nombre del host o tiene formato incorrecto).
+
+ServerName solo acepta un argumento (el dominio o IP del sitio), pero puede estar mal definido.
+
+Solución paso a paso:
+1. Abre el archivo httpd-vhosts.conf
+Ubícalo en:
+C:/wamp64/bin/apache/apache2.4.62.1/conf/extra/httpd-vhosts.conf
+
+Ábrelo con un editor de texto (como Notepad++ o VS Code).
+
+2. Revisa la línea 15 (o cerca de ella)
+Busca una estructura como esta:
+
+apache
+<VirtualHost *:80>
+    ServerName mi-sitio.local  # ← Este debe tener SOLO un argumento (ej: "localhost", "proyecto.test")
+    DocumentRoot "C:/wamp64/www/mi-proyecto"
+    <Directory "C:/wamp64/www/mi-proyecto">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+Error común:
+
+ServerName vacío:
+
+apache
+ServerName   # ← Falta el nombre del host (ERROR)
+Con argumentos extras:
+
+apache
+ServerName mi-sitio.local 443  # ← Sobran argumentos (ERROR)
+3. Corrige el ServerName
+Debe ser así (solo un dominio o IP):
+
+apache
+ServerName localhost  # Ejemplo básico
+o para un proyecto específico:
+
+apache
+ServerName gimnasio.local
+4. Guarda el archivo y reinicia Apache
+Haz clic en el ícono de WAMP → Apache → Reiniciar servicio.
+
+5. Verifica los logs si persiste el error
+Revisa C:/wamp64/logs/apache_error.log para más detalles.
+
+Ejemplo correcto de Virtual Host:
+apache
+<VirtualHost *:80>
+    ServerName gimnasio.local
+    DocumentRoot "C:/wamp64/www/gimnasio"
+    <Directory "C:/wamp64/www/gimnasio">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+Pasos adicionales:
+**Asegúrate
+
+# Virtual Hosts
+#
+<VirtualHost _default_:80>
+  ServerName localhost
+  ServerAlias localhost
+  DocumentRoot "${INSTALL_DIR}/www"
+  <Directory "${INSTALL_DIR}/www/">
+    Options +Indexes +Includes +FollowSymLinks +MultiViews
+    AllowOverride All
+    Require local
+  </Directory>
+</VirtualHost>
+
+ <VirtualHost *:80>
+ 	ServerName gimnasio.test  # Elige el nombre de dominio local que desees
+        DocumentRoot "C:/wamp64/www/gimnasio/public" # Ruta a la carpeta public de tu proyecto
+         <Directory "C:/wamp64/www/gimnasio/public">
+            Options Indexes FollowSymLinks MultiViews
+            AllowOverride All
+           Require all granted
+        </Directory>
+	ErrorLog "C:/wamp64/logs/gimnasio_error.log"
+        CustomLog "C:/wamp64/logs/gimnasio_access.log"
+</VirtualHost>
+Parece que tu archivo httpd-vhosts.conf está casi correcto, pero hay algunos detalles que podrían causar problemas. Vamos a revisarlo y corregirlo:
+
+Archivo Corregido (httpd-vhosts.conf):
+apache
+# Virtual Hosts
+#
+<VirtualHost _default_:80>
+    ServerName localhost
+    ServerAlias localhost
+    DocumentRoot "${INSTALL_DIR}/www"
+    <Directory "${INSTALL_DIR}/www/">
+        Options +Indexes +Includes +FollowSymLinks +MultiViews
+        AllowOverride All
+        Require local
+    </Directory>
+</VirtualHost>
+
+<VirtualHost *:80>
+    ServerName gimnasio.test
+    DocumentRoot "C:/wamp64/www/gimnasio/public"
+    <Directory "C:/wamp64/www/gimnasio/public">
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride All
+        Require all granted
+    </Directory>
+    ErrorLog "C:/wamp64/logs/gimnasio_error.log"
+    CustomLog "C:/wamp64/logs/gimnasio_access.log" common
+</VirtualHost>
+Cambios realizados:
+Eliminé espacios innecesarios al inicio de <VirtualHost *:80> para mantener consistencia.
+
+Añadí common al final de CustomLog (es necesario para definir el formato del log).
+
+Aseguré que las rutas estén correctas:
+
+DocumentRoot apunta a la carpeta public de tu proyecto Laravel.
+
+Las rutas de los logs (ErrorLog y CustomLog) están bien definidas.
+
+Pasos para que funcione:
+1. Editar el archivo hosts de Windows:
+Abre el archivo C:\Windows\System32\drivers\etc\hosts como administrador.
+
+Añade esta línea al final:
+
+127.0.0.1    gimnasio.test
+Guarda el archivo.
+
+2. Reiniciar Apache:
+Haz clic en el ícono de WAMP → Apache → Reiniciar servicio.
+
+3. Probar el sitio:
+Abre tu navegador y visita:
+
+http://gimnasio.test
+Posibles errores y soluciones:
+Error 403 (Forbidden):
+
+Asegúrate de que la carpeta public tenga permisos de lectura.
+
+Verifica que Require all granted esté en la configuración del <Directory>.
+
+Error 404 (Not Found):
+
+Revisa que la ruta C:/wamp64/www/gimnasio/public sea correcta.
+
+Comprueba que el archivo index.php exista en esa carpeta.
+
+Apache no inicia:
+
+Verifica los logs en C:/wamp64/logs/apache_error.log.
+
+Si hay errores de sintaxis, corrige el archivo httpd-vhosts.conf nuevamente.
+
+Notas adicionales:
+Si usas Laravel, asegúrate de que el .htaccess en la carpeta public esté correctamente configurado.
+
+Si necesitas HTTPS, puedes configurar un certificado SSL con WAMP (usando openssl).
+
+Con estos cambios, tu sitio gimnasio.test debería funcionar correctamente. ¡Déjame saber si necesitas más ayuda! 🚀
+
+There is a syntax error in Apache conf files.
+AH00526: Syntax error on line 15 of C:/wamp64/bin/apache/apache2.4.62.1/conf/extra/httpd-vhosts.conf:
+ServerName takes one argument, The hostname and port of the server
+El error que estás viendo indica que hay un problema de sintaxis en la línea 15 de tu archivo httpd-vhosts.conf. Apache está esperando exactamente un argumento para la directiva ServerName, pero está recibiendo algo diferente.
+
+Problema específico:
+En tu archivo mostrado anteriormente, la línea 15 corresponde a:
+
+apache
+ServerName gimnasio.test
+Aunque esta línea parece correcta, el error podría deberse a:
+
+Caracteres invisibles o especiales en esa línea
+
+Falta de espacio después de ServerName
+
+Comentarios mal formados alrededor de esa línea
+
+Solución paso a paso:
+Abre el archivo httpd-vhosts.conf en un editor de texto como Notepad++ o VS Code (evita el Bloc de notas)
+
+Verifica cuidadosamente la línea 15 y sus alrededores:
+
+Asegúrate que no haya caracteres extraños
+
+Verifica que no haya espacios raros o saltos de línea
+
+Reemplaza completamente el bloque del VirtualHost con este código corregido:
+
+apache
+<VirtualHost *:80>
+    ServerName gimnasio.test
+    DocumentRoot "C:/wamp64/www/gimnasio/public"
+    <Directory "C:/wamp64/www/gimnasio/public">
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride All
+        Require all granted
+    </Directory>
+    ErrorLog "C:/wamp64/logs/gimnasio_error.log"
+    CustomLog "C:/wamp64/logs/gimnasio_access.log" common
+</VirtualHost>
+Verifica lo siguiente:
+
+Que no haya espacios antes de <VirtualHost>
+
+Que todas las comillas sean rectas (") y no curvas
+
+Que no haya caracteres especiales ocultos
+
+Guarda el archivo y reinicia Apache desde el menú de WAMP
+
+Si el error persiste:
+Prueba cambiar temporalmente el ServerName a algo más simple:
+
+apache
+ServerName localhost
+Verifica la codificación del archivo:
+
+Debe estar guardado en formato ANSI o UTF-8 sin BOM
+
+Intenta eliminar y volver a crear el archivo httpd-vhosts.conf desde cero
+
+Revisa si hay algún include duplicado del archivo httpd-vhosts.conf en tu httpd.conf principal
+
+Verifica los logs completos de Apache en:
+C:/wamp64/logs/apache_error.log
+
+Este error suele ser muy específico de la sintaxis exacta en ese archivo. Si después de estos pasos sigue apareciendo, sería útil que compartieras el contenido exacto de las líneas 10-20 del archivo para identificar mejor el problema.
+
+se creo la base de datos y la tabla sessions
+CREATE DATABASE IF NOT EXISTS `gimnasio` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `gimnasio
+DROP TABLE IF EXISTS `sessions`;
+CREATE TABLE IF NOT EXISTS `sessions` (
+  `id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` bigint UNSIGNED DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_activity` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `sessions_user_id_index` (`user_id`),
+  KEY `sessions_last_activity_index` (`last_activity`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

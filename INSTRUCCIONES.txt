@@ -1,0 +1,203 @@
+======================================================================
+== INSTRUCCIONES DE CONFIGURACIÓN DEL PROYECTO GIMNASIO EN WAMP ==
+======================================================================
+
+Este documento describe los pasos para configurar y ejecutar el proyecto
+de gestión de gimnasio desarrollado en Laravel en un entorno WAMP en Windows.
+
+**Requisitos Previos:**
+
+1.  **WampServer Instalado:**
+    *   Si no tienes WampServer, descárgalo desde [https://www.wampserver.com/](https://www.wampserver.com/) (elige la versión que corresponda a tu sistema, 32 o 64 bits, y que incluya una versión reciente de PHP, por ejemplo, PHP 8.1 o superior, y MySQL).
+    *   Asegúrate de instalar todos los componentes redistribuibles de Visual C++ que WampServer pueda requerir (el instalador usualmente los lista).
+    *   Una vez instalado, inicia WampServer. El ícono en la bandeja del sistema debería ponerse verde.
+
+2.  **Composer Instalado:**
+    *   Composer es un manejador de dependencias para PHP. Descárgalo desde [https://getcomposer.org/download/](https://getcomposer.org/download/).
+    *   Ejecuta el instalador. Durante la instalación, te pedirá que localices el ejecutable `php.exe`. Si WampServer está instalado y configurado correctamente, debería encontrarlo automáticamente. Si no, búscalo dentro de la carpeta de tu versión de PHP en WAMP (ej. `C:\wamp64\bin\php\phpX.Y.Z\php.exe`).
+    *   Verifica la instalación abriendo una nueva terminal (CMD o PowerShell) y ejecutando: `composer --version`
+
+3.  **Node.js y NPM Instalados:**
+    *   Node.js se usa para gestionar las dependencias de frontend (como Tailwind CSS) y para compilar los assets.
+    *   Descárgalo desde [https://nodejs.org/](https://nodejs.org/) (se recomienda la versión LTS). NPM se instala automáticamente con Node.js.
+    *   Verifica la instalación abriendo una nueva terminal y ejecutando: `node -v` y `npm -v`.
+
+4.  **Git Instalado (Opcional, pero recomendado):**
+    *   Para clonar el repositorio y gestionar versiones. Descárgalo desde [https://git-scm.com/](https://git-scm.com/).
+
+**Pasos de Configuración del Proyecto:**
+
+**1. Obtener el Código del Proyecto:**
+    *   **Opción A (Si el proyecto está en un repositorio Git):**
+        1.  Abre una terminal (Git Bash, CMD o PowerShell).
+        2.  Navega al directorio `www` de tu instalación de WAMP (ej. `cd C:\wamp64\www`).
+        3.  Clona el repositorio: `git clone URL_DEL_REPOSITORIO nombre_del_proyecto`
+        4.  Ingresa al directorio del proyecto: `cd nombre_del_proyecto`
+    *   **Opción B (Si tienes los archivos del proyecto en un ZIP):**
+        1.  Descomprime los archivos del proyecto en una nueva carpeta dentro del directorio `www` de WAMP (ej. `C:\wamp64\www\nombre_del_proyecto`).
+        2.  Abre una terminal y navega a este directorio: `cd C:\wamp64\www\nombre_del_proyecto`
+
+**2. Configurar la Base de Datos MySQL:**
+    1.  **Iniciar WampServer** (asegúrate de que el ícono esté verde).
+    2.  **Abrir phpMyAdmin:**
+        *   Haz clic izquierdo en el ícono de WampServer en la bandeja del sistema.
+        *   Selecciona `phpMyAdmin`.
+        *   El usuario por defecto suele ser `root` sin contraseña.
+    3.  **Crear una nueva base de datos:**
+        *   En phpMyAdmin, ve a la pestaña "Bases de datos".
+        *   En "Crear base de datos", ingresa un nombre para tu base de datos (ej. `gimnasio_db`).
+        *   Elige una codificación, se recomienda `utf8mb4_unicode_ci`.
+        *   Haz clic en "Crear".
+
+**3. Configurar el Archivo de Entorno (`.env`):**
+    1.  En el directorio raíz de tu proyecto Laravel, busca el archivo `.env.example`. Si no existe, puedes copiar el contenido de un `.env` de otro proyecto Laravel y adaptarlo, o crearlo desde cero con las variables esenciales.
+    2.  Crea una copia de `.env.example` (si existe) y renómbrala a `.env`, o crea un archivo `.env` vacío.
+    3.  Abre el archivo `.env` con un editor de texto.
+    4.  Configura los siguientes parámetros de conexión a la base de datos:
+        ```env
+        DB_CONNECTION=mysql
+        DB_HOST=127.0.0.1
+        DB_PORT=3306  # O el puerto que WAMP esté usando para MySQL (generalmente 3306)
+        DB_DATABASE=gimnasio_db  # El nombre de la base de datos que creaste
+        DB_USERNAME=root         # Tu usuario de MySQL (por defecto 'root' en WAMP)
+        DB_PASSWORD=             # Tu contraseña de MySQL (por defecto vacía en WAMP)
+        ```
+    5.  Asegúrate de que `APP_URL` y `APP_NAME` estén configurados:
+        ```env
+        APP_NAME="Gimnasio App"
+        APP_ENV=local
+        APP_KEY=  # Se generará en un paso posterior
+        APP_DEBUG=true
+        APP_URL=http://localhost/nombre_del_proyecto
+        # o si usas un virtual host como "proyecto-gimnasio.test"
+        # APP_URL=http://proyecto-gimnasio.test
+        ```
+    6.  Configura también `SESSION_DRIVER` y `CACHE_DRIVER` a `file` si no están así, para empezar.
+
+**4. Instalar Dependencias de PHP (Composer):**
+    1.  Abre una terminal en el directorio raíz de tu proyecto.
+    2.  Ejecuta el siguiente comando para instalar las librerías de PHP:
+        ```bash
+        composer install --no-interaction --prefer-dist --optimize-autoloader
+        ```
+        Si encuentras problemas de memoria, puedes intentar: `php -d memory_limit=-1 /ruta/a/composer.phar install ...`
+        Esto puede tardar unos minutos.
+
+**5. Generar la Clave de Aplicación Laravel:**
+    1.  En la misma terminal, ejecuta:
+        ```bash
+        php artisan key:generate
+        ```
+        Esto llenará la variable `APP_KEY` en tu archivo `.env`.
+
+Agrega en AppServiceProvider.php:
+php
+
+Copiar
+public function boot()
+{
+    Schema::defaultStringLength(191);
+
+**6. Ejecutar las Migraciones de la Base de Datos:**
+    1.  Este comando creará todas las tablas en tu base de datos (`gimnasio_db`):
+        ```bash
+        php artisan migrate
+        ```
+    2.  (Opcional) Si necesitas datos de prueba (seeders), ejecuta:
+        ```bash
+        php artisan db:seed
+        ```
+
+**7. Instalar Dependencias de Frontend (NPM):**
+    1.  En la misma terminal, ejecuta:
+        ```bash
+        npm install
+        ```
+
+**8. Compilar Assets de Frontend (Tailwind CSS, JS):**
+    1.  Ejecuta el siguiente comando para compilar los assets para desarrollo:
+        ```bash
+        npm run dev
+        ```
+    2.  Para producción, usarías `npm run build`. Para desarrollo, `npm run dev` también inicia un servidor de Vite que observa cambios y habilita Hot Module Replacement (HMR). Mantén esta terminal abierta mientras desarrollas.
+
+**9. Configurar un VirtualHost en Apache (Recomendado):**
+
+    Usar un VirtualHost te permite acceder a tu proyecto con una URL amigable (ej. `http://gimnasio.test`) en lugar de `http://localhost/nombre_del_proyecto/public`.
+
+    1.  **Habilitar `mod_vhost_alias` en Apache:**
+        *   Clic izquierdo en el ícono de WampServer -> Apache -> Módulos de Apache.
+        *   Busca `vhost_alias_module` en la lista y asegúrate de que esté marcado (activado). WampServer podría necesitar reiniciarse.
+
+    2.  **Editar el archivo `httpd-vhosts.conf`:**
+        *   Clic izquierdo en el ícono de WampServer -> Apache -> `httpd-vhosts.conf`.
+        *   Añade la siguiente configuración al final del archivo, adaptando las rutas:
+            ```apache
+            <VirtualHost *:80>
+                ServerName gimnasio.test  # Elige el nombre de dominio local que desees
+                DocumentRoot "C:/wamp64/www/nombre_del_proyecto/public" # Ruta a la carpeta public de tu proyecto
+                <Directory "C:/wamp64/www/nombre_del_proyecto/public">
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride All
+                    Require all granted
+                </Directory>
+                ErrorLog "C:/wamp64/logs/gimnasio_error.log"
+                CustomLog "C:/wamp64/logs/gimnasio_access.log" common
+            </VirtualHost>
+            ```
+        *   **Importante:** Reemplaza `nombre_del_proyecto` con el nombre real de la carpeta de tu proyecto.
+        *   Guarda el archivo.
+
+    3.  **Editar el archivo `hosts` de Windows:**
+        *   Abre el Bloc de notas como Administrador.
+        *   Ve a `Archivo -> Abrir` y navega a `C:\Windows\System32\drivers\etc\`.
+        *   Selecciona "Todos los archivos (*.*)" para ver el archivo `hosts`.
+        *   Abre el archivo `hosts`.
+        *   Añade la siguiente línea al final:
+            ```
+            127.0.0.1    gimnasio.test  # El mismo ServerName que pusiste en httpd-vhosts.conf
+            ```
+        *   Guarda el archivo.
+
+    4.  **Reiniciar los Servicios DNS y Apache:**
+        *   Clic derecho en el ícono de WampServer -> Herramientas -> Reiniciar DNS. (Esto limpia la caché DNS de Windows).
+        *   Clic izquierdo en el ícono de WampServer -> Reiniciar todos los servicios. Espera a que el ícono vuelva a estar verde.
+
+    5.  Ahora deberías poder acceder a tu proyecto en el navegador visitando `http://gimnasio.test`.
+
+**10. Acceder a la Aplicación:**
+    *   Si configuraste un VirtualHost, ve a `http://gimnasio.test` (o el ServerName que elegiste).
+    *   Si no configuraste un VirtualHost, puedes intentar acceder a través de `http://localhost/nombre_del_proyecto/public`. (Esto puede tener problemas con la resolución de rutas de assets si no se configura `ASSET_URL` en `.env`).
+    *   También puedes usar el servidor de desarrollo de Laravel (no usa Apache de WAMP, recomendado para desarrollo si el VirtualHost da problemas inicialmente):
+        *   Asegúrate que `npm run dev` esté corriendo en una terminal.
+        *   En OTRA terminal, en la raíz del proyecto, ejecuta: `php artisan serve`
+        *   Esto iniciará el servidor en `http://127.0.0.1:8000`.
+
+**Solución de Problemas Comunes:**
+
+*   **Icono de WAMP Naranja o Rojo:** Algún servicio (Apache o MySQL) no pudo iniciarse.
+    *   Verifica que ningún otro programa esté usando los puertos 80 (para Apache) o 3306 (para MySQL). Skype, IIS u otros servidores web son causas comunes.
+    *   Clic izquierdo en WAMP -> Apache -> Probar puerto 80.
+    *   Clic izquierdo en WAMP -> MySQL -> Probar puerto 3306.
+    *   Revisa los logs de error de Apache y MySQL desde el menú de WAMP.
+*   **Error "Class '...' not found" o similar:**
+    *   Ejecuta `composer dump-autoload` en la terminal.
+    *   Asegúrate de que `composer install` haya terminado sin errores.
+*   **Página en blanco o error 500 (Internal Server Error):**
+    *   Verifica los permisos de las carpetas `storage` y `bootstrap/cache`. Deben ser escribibles por el servidor web. En Windows esto es menos común que en Linux, pero revisa la seguridad de las carpetas si hay problemas.
+    *   Revisa los logs de Laravel en `storage/logs/laravel.log`.
+    *   Asegúrate de que el archivo `.env` esté configurado correctamente y que `APP_KEY` esté generada.
+    *   Si usas VirtualHost, asegúrate que la directiva `DocumentRoot` apunte a la carpeta `/public` del proyecto.
+*   **Tailwind CSS no se aplica o la página se ve sin estilos:**
+    *   Asegúrate de que `npm run dev` se haya ejecutado sin errores y que esté corriendo (si quieres HMR).
+    *   Verifica que la etiqueta `@vite(['resources/css/app.css', 'resources/js/app.js'])` (o similar si usas Mix) esté presente en el `<head>` de tu layout principal (`resources/views/layouts/app.blade.php`).
+    *   Abre las herramientas de desarrollador del navegador (F12) y revisa la consola por errores de carga de archivos CSS o JS. Verifica la pestaña "Network" para ver si los archivos CSS se cargan correctamente (código 200).
+*   **Error de base de datos "Access denied for user..." o "Unknown database...":**
+    *   Verifica doblemente las credenciales `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` en tu archivo `.env`.
+    *   Asegúrate de que la base de datos exista en phpMyAdmin y que el usuario tenga permisos sobre ella.
+*   **Vite: "Unable to connect to Vite server":**
+    *   Asegúrate de que `npm run dev` esté corriendo en una terminal separada.
+    *   Si estás usando un VirtualHost con HTTPS, o un puerto diferente, puede que necesites configurar Vite para que use HTTPS o el proxy correcto. Revisa la documentación de Laravel sobre Vite.
+
+¡Disfruta de la aplicación!
+```
