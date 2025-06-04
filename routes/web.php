@@ -6,7 +6,8 @@ use App\Livewire\GestionMembresias;
 use App\Livewire\RegistroAccesoManual;
 use App\Livewire\GestionClases;
 use App\Livewire\FacturacionPagos;
-use App\Livewire\GestionTiposMembresia; // Importar el nuevo componente
+use App\Livewire\GestionTiposMembresia;
+use App\Livewire\GestionSucursales; // Importar el nuevo componente
 
 Route::get('/', function () {
     // return view('welcome');
@@ -28,7 +29,8 @@ Route::middleware([
     Route::get('/accesos/manual', RegistroAccesoManual::class)->name('accesos.manual');
     Route::get('/clases', GestionClases::class)->name('clases');
     Route::get('/pagos', FacturacionPagos::class)->name('pagos');
-    Route::get('/tipos-membresia', GestionTiposMembresia::class)->name('tipos-membresia.index'); // Nueva ruta
+    Route::get('/tipos-membresia', GestionTiposMembresia::class)->name('tipos-membresia.index');
+    Route::get('/sucursales', GestionSucursales::class)->name('sucursales.index'); // Nueva ruta
 
     // Placeholder for other routes like profile, etc.
     // Jetstream/Fortify usually provides /user/profile
