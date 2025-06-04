@@ -15,7 +15,31 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
                 </div>
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('membresias')" :active="request()->routeIs('dashboard')">
+                        {{ __('Membresia') }}
+                    </x-nav-link>
+                </div>
+                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('pagos')" :active="request()->routeIs('dashboard')">
+                        {{ __('Pagos') }}
+                    </x-nav-link>
+                </div>
+                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('accesomanual')" :active="request()->routeIs('dashboard')">
+                        {{ __('Acceso Manual') }}
+                    </x-nav-link>
+                </div>
+                   <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('tipos-membresia.index')" :active="request()->routeIs('dashboard')">
+                        {{ __('Tipos Membresia') }}
+                    </x-nav-link>
+                </div>
+
+
+
             </div>
 
             <!-- Settings Dropdown -->

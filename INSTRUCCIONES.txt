@@ -90,17 +90,6 @@ de gestión de gimnasio desarrollado en Laravel en un entorno WAMP en Windows.
         ```
         Esto llenará la variable `APP_KEY` en tu archivo `.env`.
 
-<<<<<<< HEAD
-Agrega en AppServiceProvider.php:
-php
-
-Copiar
-public function boot()
-{
-    Schema::defaultStringLength(191);
-
-=======
->>>>>>> db126c19a44e5c87332bb60db2559977923a7161
 **6. Ejecutar las Migraciones de la Base de Datos:**
     1.  Este comando creará todas las tablas en tu base de datos (`gimnasio_db`):
         ```bash

@@ -74,13 +74,13 @@
         <div class="bg-white shadow-lg rounded-lg p-4 md:col-span-full"> {{-- Changed to full span for better layout with many buttons --}}
             <h2 class="text-lg font-semibold text-gray-700 mb-3">Acciones Rápidas</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <a href="#" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded text-center text-sm">
+                <a href="{{ route('membresias') ?? '#' }}" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded text-center text-sm">
                     Registrar Nuevo Miembro
                 </a>
-                <a href="#" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded text-center text-sm">
+                <a href="{{ route('pagos') ?? '#' }}" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded text-center text-sm">
                     Registrar Pago
                 </a>
-                <a href="#" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-4 rounded text-center text-sm">
+                <a href="{{ route('accesomanual') ?? '#' }}"class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-4 rounded text-center text-sm">
                     Verificar Acceso Manual
                 </a>
             </div>
