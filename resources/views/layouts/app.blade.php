@@ -37,6 +37,7 @@
                         <div class="ml-10 flex items-baseline space-x-4">
                             <a href="{{ route('dashboard') ?? '#' }}" class="px-3 py-2 rounded-md text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-primary text-white' : 'text-neutral-300 hover:bg-neutral-700 hover:text-white' }}">Dashboard</a>
                             <a href="{{ route('membresias') ?? '#' }}" class="px-3 py-2 rounded-md text-sm font-medium {{ request()->routeIs('membresias') ? 'bg-primary text-white' : 'text-neutral-300 hover:bg-neutral-700 hover:text-white' }}">Membresías</a>
+                            <a href="{{ route('tipos-membresia.index') }}" class="px-3 py-2 rounded-md text-sm font-medium {{ request()->routeIs('tipos-membresia.index') ? 'bg-primary text-white' : 'text-neutral-300 hover:bg-neutral-700 hover:text-white' }}">Tipos de Membresía</a>
                             {{-- Add other main navigation links here, following the pattern --}}
                         </div>
                     </div>
@@ -85,6 +86,7 @@
                 <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                     <a href="{{ route('dashboard') ?? '#' }}" class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('dashboard') ? 'bg-primary text-white' : 'text-neutral-300 hover:bg-neutral-700 hover:text-white' }}">Dashboard</a>
                     <a href="{{ route('membresias') ?? '#' }}" class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('membresias') ? 'bg-primary text-white' : 'text-neutral-300 hover:bg-neutral-700 hover:text-white' }}">Membresías</a>
+                    <a href="{{ route('tipos-membresia.index') }}" class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('tipos-membresia.index') ? 'bg-primary text-white' : 'text-neutral-300 hover:bg-neutral-700 hover:text-white' }}">Tipos de Membresía</a>
                 </div>
                 <div class="pt-4 pb-3 border-t border-neutral-700">
                     <div class="flex items-center px-5">
