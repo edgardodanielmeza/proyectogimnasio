@@ -237,27 +237,39 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">{{ $miembro->email }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">{{ $miembro->sucursal->nombre ?? 'N/A' }}</td>
+                        @php
+                            $membresiaAMostrar = $miembro->membresiaActivaActual ?? $miembro->ultimaMembresiaGeneral;
+                        @endphp
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">
-                            @if($miembro->latestMembresia)
-                                {{ \Carbon\Carbon::parse($miembro->latestMembresia->fecha_fin)->format('d/m/Y') }}
-                                <div class="text-xs text-neutral-500">({{ $miembro->latestMembresia->tipoMembresia->nombre ?? 'N/A' }})</div>
+                            @if($membresiaAMostrar)
+                                {{ \Carbon\Carbon::parse($membresiaAMostrar->fecha_fin)->format('d/m/Y') }}
+                                <div class="text-xs text-neutral-500">({{ $membresiaAMostrar->tipoMembresia->nombre ?? 'N/A' }})</div>
                             @else
                                 N/A
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($miembro->latestMembresia)
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                    {{ $miembro->latestMembresia->estado == 'activa' && \Carbon\Carbon::parse($miembro->latestMembresia->fecha_fin)->isFuture() ? 'bg-success-light text-success-dark' : '' }}
-                                    {{ ($miembro->latestMembresia->estado == 'vencida' || \Carbon\Carbon::parse($miembro->latestMembresia->fecha_fin)->isPast()) && !in_array($miembro->latestMembresia->estado, ['cancelada', 'suspendida']) ? 'bg-danger-light text-danger-dark' : '' }}
-                                    {{ $miembro->latestMembresia->estado == 'cancelada' ? 'bg-neutral-200 text-neutral-800' : '' }}
-                                    {{ $miembro->latestMembresia->estado == 'suspendida' ? 'bg-warning-light text-warning-dark' : '' }}">
+                            @if($membresiaAMostrar)
+                                @php
+                                    $estadoVisible = $membresiaAMostrar->estado;
+                                    $fechaFinVisible = \Carbon\Carbon::parse($membresiaAMostrar->fecha_fin);
+                                    $hoyVisible = \Carbon\Carbon::today();
+                                    $claseBadgeVisible = 'bg-neutral-200 text-neutral-800'; // Default
+                                    $textoEstadoVisible = ucfirst($estadoVisible);
 
-                                    @if(\Carbon\Carbon::parse($miembro->latestMembresia->fecha_fin)->isPast() && !in_array($miembro->latestMembresia->estado, ['cancelada', 'suspendida']))
-                                        Vencida
-                                    @else
-                                        {{ ucfirst($miembro->latestMembresia->estado) }}
-                                    @endif
+                                    if ($estadoVisible == 'activa' && $fechaFinVisible->gte($hoyVisible)) {
+                                        $claseBadgeVisible = 'bg-success-light text-success-dark';
+                                    } elseif ($estadoVisible == 'vencida' || ($fechaFinVisible->lt($hoyVisible) && !in_array($estadoVisible, ['cancelada', 'suspendida'])) ) {
+                                        $claseBadgeVisible = 'bg-danger-light text-danger-dark';
+                                        $textoEstadoVisible = 'Vencida';
+                                    } elseif ($estadoVisible == 'suspendida') {
+                                        $claseBadgeVisible = 'bg-warning-light text-warning-dark';
+                                    } elseif ($estadoVisible == 'cancelada') {
+                                        $claseBadgeVisible = 'bg-neutral-400 text-black'; // Un gris más oscuro para cancelada
+                                    }
+                                @endphp
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $claseBadgeVisible }}">
+                                    {{ $textoEstadoVisible }}
                                 </span>
                             @else
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-neutral-200 text-neutral-800">

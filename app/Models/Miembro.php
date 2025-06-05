@@ -38,21 +38,27 @@ class Miembro extends Model
         return $this->hasMany(Membresia::class)->orderBy('fecha_fin', 'desc');
     }
 
-    public function latestMembresia(): HasOne
+    public function latestMembresia(): HasOne // Generalmente la que termina más tarde o se creó más tarde
     {
-        return $this->hasOne(Membresia::class)->orderBy('fecha_fin', 'desc');
+        return $this->hasOne(Membresia::class)->orderBy('fecha_fin', 'desc')->orderBy('created_at', 'desc');
     }
 
-    // Example of a more specific "current active" membership
-    public function activeMembresia(): HasOne
+    public function membresiaActivaActual(): HasOne
     {
         return $this->hasOne(Membresia::class)
                     ->where('estado', 'activa')
-                    ->where('fecha_inicio', '<=', now())
-                    ->where('fecha_fin', '>=', now())
-                    ->orderBy('fecha_fin', 'desc');
+                    ->where('fecha_inicio', '<=', now()->format('Y-m-d'))
+                    ->where('fecha_fin', '>=', now()->format('Y-m-d'))
+                    ->orderBy('fecha_fin', 'desc'); // En caso de solapamientos (raro), la que termina más tarde
     }
 
+    // Para obtener la última membresía registrada, sin importar su estado, útil si no hay ninguna activa
+    public function ultimaMembresiaGeneral(): HasOne
+    {
+        return $this->hasOne(Membresia::class)
+                        ->orderBy('fecha_inicio', 'desc') // La que comenzó más recientemente
+                        ->orderBy('id', 'desc'); // O por created_at para la más nueva registrada
+    }
 
     public function eventosAcceso(): HasMany
     {

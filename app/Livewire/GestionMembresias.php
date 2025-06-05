@@ -236,11 +236,11 @@ class GestionMembresias extends Component
 
     public function render()
     {
-        // Código de guardarMiembro, editarMiembro, actualizarMiembro, eliminarMiembro ya consolidados
-        // Asegurarse que esos métodos usan $this->validate() que a su vez usa $this->rules() y $this->messages()
-        // ... (los métodos CRUD de miembro ya están completos y fueron consolidados en el paso anterior)
-        // ... (los métodos CRUD de miembro ya están completos y fueron consolidados)
-        $miembros = Miembro::with(['sucursal', 'latestMembresia.tipoMembresia'])
+        $miembros = Miembro::with([
+            'sucursal',
+            'membresiaActivaActual.tipoMembresia',
+            'ultimaMembresiaGeneral.tipoMembresia'
+        ])
         ->when($this->search, function ($query) {
             $query->where(function ($q) {
                 $q->where('nombre', 'like', '%' . $this->search . '%')
