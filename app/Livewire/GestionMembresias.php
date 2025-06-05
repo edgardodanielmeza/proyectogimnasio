@@ -8,7 +8,8 @@ use App\Models\Membresia;
 use App\Models\Sucursal;
 use App\Models\TipoMembresia;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it (optional)
+use Illuminate\Validation\Rule; // For more complex validation rules if needed
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
@@ -23,8 +24,8 @@ class GestionMembresias extends Component
     public $miembroSeleccionadoId = null;
     public $nombre, $apellido, $email, $telefono, $fecha_nacimiento, $direccion;
     public $sucursal_id;
-    public $foto;
-    public $foto_actual_path;
+    public $foto; // Para la nueva foto subida (Livewire\TemporaryUploadedFile)
+    public $foto_actual_path; // Para mostrar la ruta de la foto existente al editar
 
     // Propiedades para la membresía inicial (solo en creación)
     public $tipo_membresia_id;
@@ -120,19 +121,175 @@ class GestionMembresias extends Component
         }
     }
 
-    // --- Control de Modales Principales ---
-    public function mostrarModalRegistroMiembro() { /* ... (ya consolidado) ... */ }
-    public function ocultarModalRegistroMiembro() { /* ... (ya consolidado) ... */ }
-    public function confirmarEliminacionMiembro($id) { /* ... (ya consolidado) ... */ }
-    public function ocultarModalConfirmacionEliminar() { /* ... (ya consolidado) ... */ }
-    private function resetInputFields() { /* ... (ya consolidado, incluye reset de nuevaMembresia_*) ... */ }
+    // --- Control de Modales ---
+    public function mostrarModalRegistroMiembro()
+    {
+        $this->resetInputFields();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function ocultarModalRegistroMiembro()
+    {
+        $this->mostrandoModalRegistro = false;
+        $this->resetInputFields();
+    }
+
+    public function confirmarEliminacionMiembro($id)
+    {
+        $this->miembroParaEliminarId = $id;
+        $this->mostrandoModalConfirmacionEliminar = true;
+    }
+
+    public function ocultarModalConfirmacionEliminar()
+    {
+        $this->mostrandoModalConfirmacionEliminar = false;
+        $this->miembroParaEliminarId = null;
+    }
+
+    private function resetInputFields()
+    {
+        $this->miembroSeleccionadoId = null;
+        $this->nombre = '';
+        $this->apellido = '';
+        $this->email = '';
+        $this->telefono = '';
+        $this->fecha_nacimiento = '';
+        $this->direccion = '';
+        $this->sucursal_id = $this->sucursales->first()->id ?? null;
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->foto = null;
+        $this->foto_actual_path = null;
+
+        // Resetear también los campos del sub-modal de gestión de membresías
+        $this->miembroParaGestionarMembresias = null;
+        $this->historialMembresias = [];
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+
+        // Resetear campos del modal de cancelación
+        $this->membresiaParaCancelarId = null;
+        $this->membresiaParaCancelarInfo = null;
+
+        $this->resetErrorBag();
+        $this->resetValidation();
+    }
 
     // --- Operaciones CRUD Miembro ---
-    public function guardarMiembro() { /* ... (ya consolidado) ... */ }
-    public function editarMiembro($id) { /* ... (ya consolidado) ... */ }
-    public function actualizarMiembro() { /* ... (ya consolidado) ... */ }
-    public function eliminarMiembro() { /* ... (ya consolidado) ... */ }
+    public function guardarMiembro()
+    {
+        if ($this->miembroSeleccionadoId) {
+            return $this->actualizarMiembro();
+        }
+        $validatedData = $this->validate();
+        $rutaFoto = null;
+        if ($this->foto) {
+            $rutaFoto = $this->foto->store('fotos_miembros', 'public');
+        }
+        $miembro = Miembro::create([
+            'nombre' => $validatedData['nombre'],
+            'apellido' => $validatedData['apellido'],
+            'email' => $validatedData['email'],
+            'telefono' => $validatedData['telefono'],
+            'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+            'direccion' => $validatedData['direccion'],
+            'sucursal_id' => $validatedData['sucursal_id'],
+            'codigo_acceso_numerico' => (string) rand(100000, 999999),
+            'foto_path' => $rutaFoto,
+        ]);
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['tipo_membresia_id']);
+        if ($tipoMembresiaSeleccionado) {
+            $fechaFin = Carbon::parse($validatedData['fecha_inicio_membresia'])
+                                ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                                ->format('Y-m-d');
+            $miembro->membresias()->create([
+                'tipo_membresia_id' => $validatedData['tipo_membresia_id'],
+                'fecha_inicio' => $validatedData['fecha_inicio_membresia'],
+                'fecha_fin' => $fechaFin,
+                'estado' => 'activa',
+            ]);
+        }
+        session()->flash('message', 'Miembro y membresía registrados exitosamente.');
+        $this->ocultarModalRegistroMiembro();
+    }
 
+    public function editarMiembro($id)
+    {
+        $miembro = Miembro::findOrFail($id);
+        $this->miembroSeleccionadoId = $miembro->id;
+        $this->nombre = $miembro->nombre;
+        $this->apellido = $miembro->apellido;
+        $this->email = $miembro->email;
+        $this->telefono = $miembro->telefono;
+        $this->fecha_nacimiento = $miembro->fecha_nacimiento ? Carbon::parse($miembro->fecha_nacimiento)->format('Y-m-d') : null;
+        $this->direccion = $miembro->direccion;
+        $this->sucursal_id = $miembro->sucursal_id;
+        $this->foto_actual_path = $miembro->foto_path;
+        $this->foto = null;
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->resetErrorBag();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function actualizarMiembro()
+    {
+        if (!$this->miembroSeleccionadoId) {
+            session()->flash('error', 'Error al actualizar: No hay miembro seleccionado.');
+            $this->ocultarModalRegistroMiembro();
+            return;
+        }
+        $updateRules = $this->rules();
+        unset($updateRules['tipo_membresia_id']);
+        unset($updateRules['fecha_inicio_membresia']);
+        $validatedData = $this->validate($updateRules);
+        $miembro = Miembro::find($this->miembroSeleccionadoId);
+        if ($miembro) {
+            $updateDataArr = [
+                'nombre' => $validatedData['nombre'],
+                'apellido' => $validatedData['apellido'],
+                'email' => $validatedData['email'],
+                'telefono' => $validatedData['telefono'],
+                'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+                'direccion' => $validatedData['direccion'],
+                'sucursal_id' => $validatedData['sucursal_id'],
+            ];
+            if ($this->foto) {
+                if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
+                    Storage::disk('public')->delete($miembro->foto_path);
+                }
+                $updateDataArr['foto_path'] = $this->foto->store('fotos_miembros', 'public');
+            }
+            $miembro->update($updateDataArr);
+            session()->flash('message', 'Miembro actualizado exitosamente.');
+        } else {
+            session()->flash('error', 'No se encontró el miembro para actualizar.');
+        }
+        $this->ocultarModalRegistroMiembro();
+    }
+
+    public function eliminarMiembro()
+    {
+        if ($this->miembroParaEliminarId) {
+            $miembro = Miembro::find($this->miembroParaEliminarId);
+            if ($miembro) {
+                try {
+                    if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
+                        Storage::disk('public')->delete($miembro->foto_path);
+                    }
+                    $miembro->delete();
+                    session()->flash('message', 'Miembro eliminado exitosamente.');
+                } catch (\Illuminate\Database\QueryException $e) {
+                    session()->flash('error', 'No se pudo eliminar el miembro. Puede tener datos asociados que impiden su eliminación directa.');
+                } catch (\Exception $e) {
+                    session()->flash('error', 'Ocurrió un error al intentar eliminar el miembro: ' . $e->getMessage());
+                }
+            } else {
+                session()->flash('error', 'No se encontró el miembro para eliminar.');
+            }
+            $this->ocultarModalConfirmacionEliminar();
+        }
+    }
 
     // --- Modal de Gestión de Membresías del Miembro ---
     public function abrirModalGestionMembresias($miembroId)
@@ -168,7 +325,7 @@ class GestionMembresias extends Component
         $membresia = Membresia::with('tipoMembresia')->find($membresiaId);
         if ($membresia && $membresia->estado == 'activa' && Carbon::parse($membresia->fecha_fin)->gte(Carbon::today())) {
             $this->membresiaParaCancelarId = $membresia->id;
-            $this->membresiaParaCancelarInfo = $membresia->tipoMembresia->nombre . " (Fin: " . Carbon::parse($membresia->fecha_fin)->format('d/m/Y') . ")";
+            $this->membresiaParaCancelarInfo = ($membresia->tipoMembresia->nombre ?? 'N/A') . " (Fin: " . Carbon::parse($membresia->fecha_fin)->format('d/m/Y') . ")";
             $this->mostrandoModalConfirmacionCancelarMembresia = true;
         } else {
             session()->flash('error_modal_gestion', 'Esta membresía no se puede cancelar o ya no está activa.');
@@ -189,20 +346,16 @@ class GestionMembresias extends Component
             $this->ocultarModalConfirmacionCancelarMembresia();
             return;
         }
-
         $membresia = Membresia::find($this->membresiaParaCancelarId);
-
         if ($membresia && $membresia->estado == 'activa' && Carbon::parse($membresia->fecha_fin)->gte(Carbon::today())) {
             $membresia->estado = 'cancelada';
             $membresia->save();
-
             if ($this->miembroParaGestionarMembresias) {
                 $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
                                                 ->with('tipoMembresia')
                                                 ->orderBy('fecha_inicio', 'desc')
                                                 ->get();
             }
-
             session()->flash('message_modal_gestion', 'La membresía ha sido cancelada.');
         } else {
             session()->flash('error_modal_gestion', 'No se pudo cancelar la membresía o ya no estaba activa.');
@@ -232,15 +385,43 @@ class GestionMembresias extends Component
         session()->flash('info_modal_gestion', 'Datos de renovación cargados en el formulario "Añadir Nueva Membresía". Por favor, verifique y presione "Añadir Nueva Membresía" para confirmar.');
     }
 
-    public function guardarNuevaMembresiaParaMiembro() { /* ... (ya consolidado) ... */ }
+    public function guardarNuevaMembresiaParaMiembro()
+    {
+        if (!$this->miembroParaGestionarMembresias) {
+            session()->flash('error_modal_gestion', 'No hay un miembro seleccionado para añadir la membresía.');
+            return;
+        }
+        $validatedData = $this->validate([
+            'nuevaMembresia_tipo_id' => 'required|exists:tipos_membresia,id',
+            'nuevaMembresia_fecha_inicio' => 'required|date',
+        ]);
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['nuevaMembresia_tipo_id']);
+        if (!$tipoMembresiaSeleccionado) {
+            session()->flash('error_modal_gestion', 'Tipo de membresía no encontrado.');
+            return;
+        }
+        $fechaFin = Carbon::parse($validatedData['nuevaMembresia_fecha_inicio'])
+                        ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                        ->format('Y-m-d');
+        $this->miembroParaGestionarMembresias->membresias()->create([
+            'tipo_membresia_id' => $validatedData['nuevaMembresia_tipo_id'],
+            'fecha_inicio' => $validatedData['nuevaMembresia_fecha_inicio'],
+            'fecha_fin' => $fechaFin,
+            'estado' => 'activa',
+        ]);
+        session()->flash('message_modal_gestion', 'Nueva membresía añadida exitosamente al miembro.');
+        $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                        ->with('tipoMembresia')
+                                        ->orderBy('fecha_inicio', 'desc')
+                                        ->get();
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+    }
 
     public function render()
     {
-        $miembros = Miembro::with([
-            'sucursal',
-            'membresiaActivaActual.tipoMembresia',
-            'ultimaMembresiaGeneral.tipoMembresia'
-        ])
+        $miembros = Miembro::with(['sucursal', 'membresiaActivaActual.tipoMembresia', 'ultimaMembresiaGeneral.tipoMembresia'])
         ->when($this->search, function ($query) {
             $query->where(function ($q) {
                 $q->where('nombre', 'like', '%' . $this->search . '%')
