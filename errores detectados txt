@@ -363,3 +363,13 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_user_id_index` (`user_id`),
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+las sucursales debe crearse primero en el migrate y a la  hora de geenrar los seeders
+al crea un miembre ya agreagar su mebresia ya se debe generar un pago correspondiente a la membresia generada y se debe generar un pago correspondiente a la membresia
+observaciones
+la mabresia mensual da acceso a todas las sucursales
+en el login debe figurar a que suscursal esta ingrensado y en donde se muestra al usuario debe decir la sucursal actual
+
+el boton guardar no se ve
+ el formato donde se desppligan los listados son muy grandes
+

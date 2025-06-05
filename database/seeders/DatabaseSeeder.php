@@ -17,7 +17,20 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // User::factory(10)->create();
-
+            $sucursalCentral = Sucursal::create([
+            'nombre' => 'Sucursal Central',
+            'direccion' => 'Av. Principal 123, Ciudad',
+            'telefono' => '555-1234',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+          $sucursalFull  = Sucursal::create([
+            'nombre' => 'Todas las Sucursale habilitadas ',
+            'direccion' => 'cualquiera',
+            'telefono' => '555-1234',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
         User::factory()->create([
             'name' => 'Admin User',
             'apellido' => 'Administrador',
@@ -37,13 +50,7 @@ class DatabaseSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now()
         ]);
-         $sucursalCentral = Sucursal::create([
-            'nombre' => 'Sucursal Central',
-            'direccion' => 'Av. Principal 123, Ciudad',
-            'telefono' => '555-1234',
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
+
          $Mensual = TipoMembresia::create([
             'nombre' => 'Mensual',
             'descripcion' => 'Acceso a área de pesas y cardio',
