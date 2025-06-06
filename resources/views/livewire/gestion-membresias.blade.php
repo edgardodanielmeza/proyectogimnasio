@@ -154,10 +154,13 @@
 
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" wire:click="ocultarModalRegistroMiembro()" class="px-4 py-2 bg-neutral-200 text-neutral-800 rounded-md hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-400">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white font-semibold rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-primary-light">
-                        {{ $miembroSeleccionadoId ? 'Actualizar Miembro' : 'Registrar Miembro' }}
+                    <button type="submit"
+                    class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+
+                    {{ $miembroSeleccionadoId ? 'Actualizar Miembro' : 'Registrar Miembro' }}
                     </button>
                 </div>
+
             </form>
         </div>
     </div>
@@ -192,11 +195,11 @@
                 </div>
                 <div class="bg-neutral-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                     <button wire:click="ejecutarCancelacionMembresia()" type="button"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-warning hover:bg-warning-dark text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warning sm:ml-3 sm:w-auto sm:text-sm">
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         Sí, Cancelar Membresía
                     </button>
                     <button wire:click="ocultarModalConfirmacionCancelarMembresia()" type="button"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:mt-0 sm:w-auto sm:text-sm">
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         No, Mantener Activa
                     </button>
                 </div>
@@ -334,7 +337,7 @@
                     </div>
                 </div>
                 <div class="bg-neutral-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button wire:click="eliminarMiembro()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-danger hover:bg-danger-dark text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-danger-light sm:ml-3 sm:w-auto sm:text-sm">
+                    <button wire:click="eliminarMiembro()" type="button" class="px-4 py-2 bg-neutral-200 text-neutral-800 rounded-md hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-400">
                         Sí, Eliminar
                     </button>
                     <button wire:click="ocultarModalConfirmacionEliminar()" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:mt-0 sm:w-auto sm:text-sm">

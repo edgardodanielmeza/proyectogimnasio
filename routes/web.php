@@ -29,11 +29,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardGeneral::class)->name('dashboard');
     //Route::get('/membresias', GestionMembresias::class)->name('membresias');
     Route::get('/pagos', FacturacionPagos::class)->name('pagos');
-    Route::get('/accesomanual', RegistroAccesoManual::class)->name('accesomanual');
+    //Route::get('/accesomanual', RegistroAccesoManual::class)->name('accesomanual');
+     Route::get('/accesos/manual', RegistroAccesoManual::class)->name('accesos.manual');
     //Route::get('/tipos-membresia', GestionTiposMembresia::class)->name('tipos-membresia.index'); // Nueva ruta
     Route::get('/membresias', GestionMembresias::class)->name('membresias');
     Route::get('/tipos-membresia', GestionTiposMembresia::class)->name('tipos-membresia.index');
-	
+
  });
 
 

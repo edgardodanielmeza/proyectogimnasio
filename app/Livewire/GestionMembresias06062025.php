@@ -7,7 +7,6 @@ use App\Models\Miembro;
 use App\Models\Membresia;
 use App\Models\Sucursal;
 use App\Models\TipoMembresia;
-use App\Models\Pago;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it (optional)
 use Illuminate\Validation\Rule; // For more complex validation rules if needed
@@ -203,28 +202,14 @@ class GestionMembresias extends Component
             $fechaFin = Carbon::parse($validatedData['fecha_inicio_membresia'])
                                 ->addDays($tipoMembresiaSeleccionado->duracion_dias)
                                 ->format('Y-m-d');
-            $membresiaCreada = $miembro->membresias()->create([ // Guardar la membresía creada en una variable
+            $miembro->membresias()->create([
                 'tipo_membresia_id' => $validatedData['tipo_membresia_id'],
                 'fecha_inicio' => $validatedData['fecha_inicio_membresia'],
                 'fecha_fin' => $fechaFin,
                 'estado' => 'activa',
             ]);
-
-            // ---> INICIO DE NUEVA LÓGICA PARA EL PAGO <---
-            if ($membresiaCreada) { // Asegurarse que la membresía se creó
-                Pago::create([
-                    'miembro_id' => $miembro->id,
-                    'membresia_id' => $membresiaCreada->id,
-                    'monto' => $tipoMembresiaSeleccionado->precio, // Usar el precio del tipo de membresía
-                    'fecha_pago' => now()->format('Y-m-d'), // Asumir pago inmediato
-                    'metodo_pago' => 'Inscripción Inicial', // O un valor por defecto como 'Sistema' o 'Efectivo'
-                    'referencia_pago' => 'Pago inicial: ' . $tipoMembresiaSeleccionado->nombre,
-                    'factura_generada' => false,
-                ]);
-            }
-            // ---> FIN DE NUEVA LÓGICA PARA EL PAGO <---
         }
-        session()->flash('message', 'Miembro, membresía y pago inicial registrados exitosamente.');
+        session()->flash('message', 'Miembro y membresía registrados exitosamente.');
         $this->ocultarModalRegistroMiembro();
     }
 
