@@ -36,10 +36,17 @@
         </div>
     @endif
 
-    {{-- Botón de Crear Nuevo Tipo --}}
-    <div class="flex justify-end items-center mb-6">
-        <button wire:click="crearNuevoTipoMembresia" class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded shadow-md focus:outline-none focus:ring-2 focus:ring-primary-light">
-            Crear Nuevo Tipo de Membresía
+    {{-- Acciones: Búsqueda y Botón de Crear --}}
+    <div class="mb-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3">
+            <input wire:model.debounce.350ms="search" type="text"
+                   placeholder="Buscar por nombre de tipo..."
+                   class="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+        </div>
+        <button wire:click="crearNuevoTipoMembresia"
+                class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded shadow-md flex items-center w-full sm:w-auto justify-center focus:outline-none focus:ring-2 focus:ring-primary-light">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            Crear Nuevo Tipo
         </button>
     </div>
 
@@ -82,7 +89,11 @@
                 @empty
                     <tr>
                         <td colspan="5" class="px-6 py-4 whitespace-nowrap text-center text-sm text-neutral-500">
-                            No hay tipos de membresía registrados.
+                            @if(empty($search))
+                                No hay tipos de membresía registrados.
+                            @else
+                                No hay tipos de membresía que coincidan con la búsqueda "{{ $search }}".
+                            @endif
                         </td>
                     </tr>
                 @endforelse

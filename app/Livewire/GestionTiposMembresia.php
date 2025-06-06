@@ -25,6 +25,8 @@ class GestionTiposMembresia extends Component
     public $mostrandoModalConfirmacionEliminarTipo = false;
     public $tipoMembresiaParaEliminarId;
 
+    public $search = ''; // Propiedad para la búsqueda
+
     protected $paginationTheme = 'tailwind';
 
     protected function rules()
