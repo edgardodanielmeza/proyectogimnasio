@@ -21,7 +21,7 @@
                 </li>
             </ol>
         </nav>
-        {{-- El título se obtiene del layout principal a través de la propiedad $title del componente --}}
+        {{-- El título se toma del layout principal a través de la propiedad $title del componente --}}
     </div>
 
     {{-- Mensajes Flash --}}
@@ -36,9 +36,15 @@
         </div>
     @endif
 
-    {{-- Botón de Crear --}}
-    <div class="mb-4 flex justify-end">
-        <button wire:click="crearNuevaSucursal" class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded shadow-md flex items-center focus:outline-none focus:ring-2 focus:ring-primary-light">
+    {{-- Acciones: Búsqueda y Botón de Crear --}}
+    <div class="mb-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+        <div class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3">
+            <input wire:model.debounce.350ms="searchSucursales" type="text"
+                   placeholder="Buscar sucursal por nombre o dirección..."
+                   class="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+        </div>
+        <button wire:click="crearNuevaSucursal"
+                class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded shadow-md flex items-center w-full sm:w-auto justify-center focus:outline-none focus:ring-2 focus:ring-primary-light">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             Crear Nueva Sucursal
         </button>
@@ -70,14 +76,13 @@
                             <div class="text-sm font-medium text-neutral-900">{{ $sucursal->nombre }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-neutral-700">{{ $sucursal->direccion }}</div>
+                            <div class="text-sm text-neutral-700">{{ Str::limit($sucursal->direccion, 60) }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-neutral-700">{{ $sucursal->telefono ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button wire:click="editarSucursal({{ $sucursal->id }})" class="text-primary hover:text-primary-dark" title="Editar">
-                                {{-- Usar SVG o icono de FontAwesome si está configurado --}}
                                 <svg class="inline-block h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                             </button>
                             <button wire:click="confirmarEliminacionSucursal({{ $sucursal->id }})" class="text-danger hover:text-danger-dark ml-2" title="Eliminar">
@@ -88,7 +93,11 @@
                 @empty
                     <tr>
                         <td colspan="4" class="px-6 py-4 whitespace-nowrap text-center text-sm text-neutral-500">
-                            No hay sucursales registradas.
+                            @if(empty($searchSucursales))
+                                No hay sucursales registradas.
+                            @else
+                                No hay sucursales que coincidan con la búsqueda "{{ $searchSucursales }}".
+                            @endif
                         </td>
                     </tr>
                 @endforelse
@@ -98,7 +107,7 @@
 
     {{-- Paginación --}}
     @if ($sucursales->hasPages())
-        <div class="mt-4 px-2 py-2"> {{-- Ajustado padding para consistencia --}}
+        <div class="mt-4 px-2 py-2">
             {{ $sucursales->links() }}
         </div>
     @endif
@@ -114,11 +123,10 @@
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start mb-4">
                             <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full {{ $modoEdicionSucursal ? 'bg-warning-light' : 'bg-primary-light' }} sm:mx-0 sm:h-10 sm:w-10">
-                                {{-- Icono FontAwesome (requiere instalación si no está) o SVG --}}
                                 @if($modoEdicionSucursal)
                                 <svg class="h-6 w-6 text-warning-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 @else
-                                <svg class="h-6 w-6 text-primary-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 016-6h6a6 6 0 016 6v1h-3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> {{-- Icono genérico de edificio/tienda --}}
+                                <svg class="h-6 w-6 text-primary-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 016-6h6a6 6 0 016 6v1h-3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 @endif
                             </div>
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -126,7 +134,6 @@
                                     {{ $modoEdicionSucursal ? 'Editar Sucursal' : 'Crear Nueva Sucursal' }}
                                 </h3>
                                 <div class="mt-4 space-y-4">
-                                        {{-- Nombre de la Sucursal --}}
                                         <div>
                                             <label for="sucursal_nombre" class="block text-sm font-medium text-neutral-700">Nombre de la Sucursal <span class="text-danger">*</span></label>
                                             <input type="text" wire:model.defer="nombre" id="sucursal_nombre"
@@ -134,8 +141,6 @@
                                                    placeholder="Ej: Sucursal Centro">
                                             @error('nombre') <span class="text-danger text-xs">{{ $message }}</span> @enderror
                                         </div>
-
-                                        {{-- Dirección --}}
                                         <div>
                                             <label for="sucursal_direccion" class="block text-sm font-medium text-neutral-700">Dirección <span class="text-danger">*</span></label>
                                             <textarea wire:model.defer="direccion" id="sucursal_direccion" rows="3"
@@ -143,8 +148,6 @@
                                                       placeholder="Calle Falsa 123, Ciudad"></textarea>
                                             @error('direccion') <span class="text-danger text-xs">{{ $message }}</span> @enderror
                                         </div>
-
-                                        {{-- Teléfono --}}
                                         <div>
                                             <label for="sucursal_telefono" class="block text-sm font-medium text-neutral-700">Teléfono</label>
                                             <input type="tel" wire:model.defer="telefono" id="sucursal_telefono"
@@ -152,7 +155,6 @@
                                                    placeholder="Ej: +34 900 123 456">
                                             @error('telefono') <span class="text-danger text-xs">{{ $message }}</span> @enderror
                                         </div>
-                                        {{-- Aquí iría el input para el logo si se implementa --}}
                                 </div>
                             </div>
                         </div>
