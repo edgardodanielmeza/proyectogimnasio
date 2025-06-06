@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\TipoMembresia;
 use Livewire\WithPagination;
+use Illuminate\Validation\Rule; // Import Rule
 
 class GestionTiposMembresia extends Component
 {
@@ -18,6 +19,7 @@ class GestionTiposMembresia extends Component
     public $descripcion;
     public $duracion_dias;
     public $precio;
+    public $acceso_multisucursal = false; // Valor por defecto al crear uno nuevo
 
     // Control de Modales
     public $mostrandoModal = false;
@@ -25,17 +27,23 @@ class GestionTiposMembresia extends Component
     public $mostrandoModalConfirmacionEliminarTipo = false;
     public $tipoMembresiaParaEliminarId;
 
-    public $search = ''; // Propiedad para la búsqueda
+    public $search = '';
 
     protected $paginationTheme = 'tailwind';
 
     protected function rules()
     {
         return [
-            'nombre' => 'required|string|max:255|unique:tipos_membresia,nombre,' . $this->tipoMembresiaId,
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('tipos_membresia', 'nombre')->ignore($this->tipoMembresiaId)
+            ],
             'descripcion' => 'nullable|string|max:1000',
             'duracion_dias' => 'required|integer|min:1',
-            'precio' => 'required|numeric|min:0',
+            'precio' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,2})?$/',
+            'acceso_multisucursal' => 'required|boolean', // AÑADIDO
         ];
     }
 
@@ -50,6 +58,8 @@ class GestionTiposMembresia extends Component
             'precio.required' => 'El precio es obligatorio.',
             'precio.numeric' => 'El precio debe ser un valor numérico.',
             'precio.min' => 'El precio no puede ser negativo.',
+            'precio.regex' => 'El formato del precio no es válido (ej: 29.99).',
+            'acceso_multisucursal.required' => 'Debe indicar si el acceso es multisucursal.', // AÑADIDO
         ];
     }
 
@@ -69,7 +79,7 @@ class GestionTiposMembresia extends Component
     public function cerrarModal()
     {
         $this->mostrandoModal = false;
-        $this->resetInputFields(); // Asegura que todo se limpie al cerrar
+        $this->resetInputFields();
     }
 
     public function confirmarEliminacion($id)
@@ -91,6 +101,7 @@ class GestionTiposMembresia extends Component
         $this->descripcion = '';
         $this->duracion_dias = null;
         $this->precio = null;
+        $this->acceso_multisucursal = false; // AÑADIDO y default
         $this->modoEdicion = false;
         $this->resetErrorBag();
         $this->resetValidation();
@@ -99,21 +110,20 @@ class GestionTiposMembresia extends Component
     // --- Operaciones CRUD ---
     public function guardarTipoMembresia()
     {
-        // Si hay un ID, debería ser una actualización, pero el flujo de UI debe llamar a actualizarTipoMembresia.
-        // Esta guarda es solo para nuevos.
         if($this->modoEdicion || $this->tipoMembresiaId) {
              session()->flash('error', 'Error de flujo: intentando guardar como nuevo durante una edición.');
              $this->cerrarModal();
              return;
         }
 
-        $this->validate();
+        $validatedData = $this->validate();
 
         TipoMembresia::create([
-            'nombre' => $this->nombre,
-            'descripcion' => $this->descripcion,
-            'duracion_dias' => $this->duracion_dias,
-            'precio' => $this->precio,
+            'nombre' => $validatedData['nombre'],
+            'descripcion' => $validatedData['descripcion'],
+            'duracion_dias' => $validatedData['duracion_dias'],
+            'precio' => $validatedData['precio'],
+            'acceso_multisucursal' => $validatedData['acceso_multisucursal'], // AÑADIDO
         ]);
 
         session()->flash('message', 'Tipo de membresía creado exitosamente.');
@@ -128,7 +138,8 @@ class GestionTiposMembresia extends Component
         $this->nombre = $tipoMembresia->nombre;
         $this->descripcion = $tipoMembresia->descripcion;
         $this->duracion_dias = $tipoMembresia->duracion_dias;
-        $this->precio = $tipoMembresia->precio;
+        $this->precio = number_format($tipoMembresia->precio, 2, '.', ''); // Formatear para el input
+        $this->acceso_multisucursal = (bool) $tipoMembresia->acceso_multisucursal; // AÑADIDO y castear
 
         $this->modoEdicion = true;
         $this->mostrandoModal = true;
@@ -143,16 +154,17 @@ class GestionTiposMembresia extends Component
             return;
         }
 
-        $this->validate();
+        $validatedData = $this->validate();
 
         $tipoMembresia = TipoMembresia::find($this->tipoMembresiaId);
 
         if ($tipoMembresia) {
             $tipoMembresia->update([
-                'nombre' => $this->nombre,
-                'descripcion' => $this->descripcion,
-                'duracion_dias' => $this->duracion_dias,
-                'precio' => $this->precio,
+                'nombre' => $validatedData['nombre'],
+                'descripcion' => $validatedData['descripcion'],
+                'duracion_dias' => $validatedData['duracion_dias'],
+                'precio' => $validatedData['precio'],
+                'acceso_multisucursal' => $validatedData['acceso_multisucursal'], // AÑADIDO
             ]);
 
             session()->flash('message', 'Tipo de membresía actualizado exitosamente.');
@@ -166,14 +178,12 @@ class GestionTiposMembresia extends Component
     {
         if ($this->tipoMembresiaParaEliminarId) {
             $tipoMembresia = TipoMembresia::find($this->tipoMembresiaParaEliminarId);
-
             if ($tipoMembresia) {
                 if ($tipoMembresia->membresias()->exists()) {
                     session()->flash('error', 'Este tipo de membresía no se puede eliminar porque está siendo utilizado por una o más membresías de miembros.');
                     $this->ocultarModalConfirmacionEliminarTipo();
                     return;
                 }
-
                 try {
                     $tipoMembresia->delete();
                     session()->flash('message', 'Tipo de membresía eliminado exitosamente.');
@@ -189,7 +199,13 @@ class GestionTiposMembresia extends Component
 
     public function render()
     {
-        $tiposMembresia = TipoMembresia::orderBy('nombre')->paginate(10);
+        $query = TipoMembresia::orderBy('nombre');
+
+        if (!empty($this->search)) {
+            $query->where('nombre', 'like', '%' . $this->search . '%');
+        }
+
+        $tiposMembresia = $query->paginate(10);
 
         return view('livewire.gestion-tipos-membresia', [
             'tiposMembresia' => $tiposMembresia,

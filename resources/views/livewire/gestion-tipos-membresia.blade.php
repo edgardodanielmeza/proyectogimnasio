@@ -59,6 +59,7 @@
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Descripción</th>
                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-neutral-600 uppercase tracking-wider">Duración (Días)</th>
                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-neutral-600 uppercase tracking-wider">Precio</th>
+                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-neutral-600 uppercase tracking-wider">Multi-Sucursal</th>
                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-neutral-600 uppercase tracking-wider">Acciones</th>
                 </tr>
             </thead>
@@ -77,6 +78,13 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right">
                             <div class="text-sm text-neutral-700">${{ number_format($tipo->precio, 2) }}</div>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            @if($tipo->acceso_multisucursal)
+                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-success-dark bg-success-light rounded-full">Sí</span>
+                            @else
+                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-danger-dark bg-danger-light rounded-full">No</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <button wire:click="editarTipoMembresia({{ $tipo->id }})" class="text-primary hover:text-primary-dark font-semibold">
                                 Editar
@@ -88,7 +96,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-4 whitespace-nowrap text-center text-sm text-neutral-500">
+                        <td colspan="6" class="px-6 py-4 whitespace-nowrap text-center text-sm text-neutral-500">
                             @if(empty($search))
                                 No hay tipos de membresía registrados.
                             @else
@@ -148,6 +156,15 @@
                                            class="mt-1 block w-full border border-neutral-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                                            placeholder="Ej: 29.99">
                                     @error('precio') <span class="text-danger text-xs">{{ $message }}</span> @enderror
+                                </div>
+                                {{-- Checkbox para Acceso Multi-Sucursal --}}
+                                <div>
+                                    <label for="tm_acceso_multisucursal" class="flex items-center text-sm font-medium text-neutral-700">
+                                        <input type="checkbox" wire:model.defer="acceso_multisucursal" id="tm_acceso_multisucursal"
+                                               class="h-4 w-4 text-primary border-neutral-300 rounded focus:ring-primary mr-2">
+                                        Permite Acceso Multi-Sucursal
+                                    </label>
+                                    @error('acceso_multisucursal') <span class="text-danger text-xs block mt-1">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
