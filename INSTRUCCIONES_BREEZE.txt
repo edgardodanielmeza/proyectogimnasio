@@ -1,0 +1,114 @@
+======================================================================
+== INSTRUCCIONES DE INSTALACIÓN DE LARAVEL BREEZE ==
+======================================================================
+
+Este documento describe los pasos para instalar Laravel Breeze en tu
+proyecto Laravel para añadir un sistema de autenticación completo
+(login, registro, reseteo de contraseña, etc.).
+
+**Requisitos Previos:**
+
+1.  **Proyecto Laravel Existente:** Debes tener tu proyecto Laravel configurado
+    y funcionando. Esto incluye tener una base de datos configurada y las
+    migraciones básicas (como la de `users`) ya aplicadas o listas para ser aplicadas.
+2.  **Composer Instalado:** Necesario para descargar paquetes de PHP.
+    Verifica con `composer --version`.
+3.  **Node.js y NPM Instalados:** Necesarios para las dependencias de frontend
+    y la compilación de assets. Verifica con `node -v` y `npm -v`.
+
+**Pasos de Instalación:**
+
+1.  **Abrir Terminal:**
+    *   Navega a la raíz de tu proyecto Laravel en tu terminal o línea de comandos.
+    *   Ejemplo: `cd C:\wamp64\www\nombre_del_proyecto` (si usas WAMP)
+    *   o `cd /ruta/a/tu/proyecto` (en Linux/macOS).
+
+2.  **Instalar Laravel Breeze vía Composer:**
+    *   Ejecuta el siguiente comando para añadir Breeze a las dependencias de desarrollo de tu proyecto:
+        ```bash
+        composer require laravel/breeze --dev
+        ```
+    *   Espera a que Composer termine de descargar e instalar el paquete.
+
+3.  **Ejecutar el Comando de Instalación de Breeze:**
+    *   Una vez que Composer termine, ejecuta el siguiente comando Artisan:
+        ```bash
+        php artisan breeze:install
+        ```
+    *   Este comando te hará algunas preguntas interactivas en la consola:
+        *   **"Which stack would you like to install?"**
+            *   Opciones comunes: `blade` (Laravel Blade con Alpine.js), `react` (React con Inertia), `vue` (Vue con Inertia), `api` (solo backend para APIs).
+            *   **Recomendación:** Para una integración sencilla con Livewire y Blade (si es el stack principal de tu proyecto), elige `blade`. Escribe `blade` y presiona Enter.
+        *   **"Would you like dark mode support? (yes/no)"** [yes]
+            *   Elige `yes` o `no` según tu preferencia. `yes` es el valor por defecto si solo presionas Enter.
+        *   **"Would you like to install Pest tests? (yes/no)"** [no]
+            *   Si planeas escribir tests con Pest para la autenticación, elige `yes`. Sino, `no` es suficiente para empezar. `no` es el valor por defecto.
+
+4.  **Instalar Dependencias de Frontend (NPM):**
+    *   Después de que `breeze:install` complete su ejecución, Laravel Breeze habrá añadido nuevas dependencias de frontend a tu archivo `package.json` (como Alpine.js si elegiste Blade, y Tailwind CSS si aún no estaba completamente configurado).
+    *   Instala estas dependencias ejecutando:
+        ```bash
+        npm install
+        ```
+
+5.  **Compilar Assets de Frontend:**
+    *   Ahora, compila tus assets (incluyendo los nuevos de Breeze y las vistas de autenticación) con:
+        ```bash
+        npm run dev
+        ```
+    *   Para producción, usarías `npm run build`. `npm run dev` iniciará un servidor Vite (por defecto en Laravel) que observará cambios en tus archivos de frontend y los recompilará automáticamente (Hot Module Replacement - HMR). Mantén esta terminal abierta mientras desarrollas.
+
+6.  **Ejecutar Migraciones de Base de Datos:**
+    *   Laravel Breeze puede añadir o modificar algunas tablas en tu base de datos (ej. la tabla `users` podría tener nuevas columnas si no las tenía, `password_reset_tokens`, etc.). Ejecuta las migraciones para asegurar que tu esquema de base de datos esté actualizado:
+        ```bash
+        php artisan migrate
+        ```
+    *   Si ya tenías una tabla `users` y la migración de Breeze intenta crearla de nuevo, podría dar un error. Asegúrate de que tu migración de `users` original sea compatible o ajústala según sea necesario antes de este paso. Generalmente, Breeze es inteligente al respecto.
+
+**Verificación:**
+
+*   Asegúrate de que `npm run dev` esté corriendo en una terminal.
+*   Si usas un servidor local como WAMP/MAMP/XAMPP, asegúrate de que esté sirviendo tu proyecto correctamente.
+*   Si usas el servidor de desarrollo de Laravel, ejecuta `php artisan serve` en otra terminal.
+*   Visita la página principal de tu aplicación en el navegador (ej. `http://gimnasio.test` o `http://127.0.0.1:8000`).
+*   Deberías ver enlaces de "Log in" y "Register" en la esquina superior derecha de la página.
+*   Prueba registrar un nuevo usuario:
+    *   Haz clic en "Register".
+    *   Completa el formulario y envíalo.
+*   Prueba iniciar sesión con el usuario recién creado:
+    *   Haz clic en "Log in".
+    *   Ingresa las credenciales.
+*   Después de iniciar sesión, deberías ser redirigido al dashboard de tu aplicación (usualmente `/dashboard`, que Breeze configura).
+*   Prueba la funcionalidad de reseteo de contraseña si deseas.
+
+**Archivos y Estructura Añadidos/Modificados por Breeze (con stack Blade):**
+
+*   **Vistas:**
+    *   `resources/views/auth/` (forgot-password.blade.php, login.blade.php, register.blade.php, reset-password.blade.php, verify-email.blade.php, etc.)
+    *   `resources/views/layouts/guest.blade.php` (layout para páginas de invitados como login/registro)
+    *   `resources/views/layouts/navigation.blade.php` (menú de navegación que incluye enlaces de login/registro y perfil de usuario)
+    *   `resources/views/dashboard.blade.php` (una vista de dashboard simple)
+    *   `resources/views/profile/` (vistas para editar perfil y contraseña)
+    *   `resources/views/components/` (varios componentes Blade anónimos para formularios, layout, etc.)
+*   **Controladores:**
+    *   `app/Http/Controllers/Auth/` (AuthenticatedSessionController.php, ConfirmablePasswordController.php, EmailVerificationNotificationController.php, etc.)
+    *   `app/Http/Controllers/ProfileController.php`
+*   **Requests:**
+    *   `app/Http/Requests/Auth/LoginRequest.php`
+    *   `app/Http/Requests/ProfileUpdateRequest.php`
+*   **Rutas:**
+    *   Se crea el archivo `routes/auth.php` que contiene todas las rutas de autenticación (login, logout, register, password reset, email verification). Este archivo es importado en `routes/web.php`.
+*   **Tests:** Si elegiste instalarlos (ej. con Pest), en la carpeta `tests/Feature/Auth/` y `tests/Unit/`.
+*   **Tailwind CSS y JS:**
+    *   `tailwind.config.js` y `postcss.config.js` pueden ser actualizados.
+    *   `resources/css/app.css` y `resources/js/app.js` son utilizados.
+    *   Alpine.js es añadido como dependencia de frontend para interactividad en las vistas Blade.
+
+**Personalización:**
+
+*   Ahora puedes personalizar las vistas de autenticación en `resources/views/auth/` y los componentes en `resources/views/components/` según las necesidades y el estilo visual de tu aplicación.
+*   La lógica de los controladores también puede ser ajustada si es necesario, aunque para la mayoría de los casos, la funcionalidad por defecto es suficiente.
+*   Para cambiar la redirección después del login/registro, revisa `app/Providers/RouteServiceProvider.php` y la constante `HOME`.
+
+¡Eso es todo! Ahora tienes un sistema de autenticación robusto y personalizable en tu aplicación Laravel.
+```
