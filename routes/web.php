@@ -29,8 +29,8 @@ Route::middleware([
     Route::get('/accesos/manual', RegistroAccesoManual::class)->name('accesos.manual');
     Route::get('/clases', GestionClases::class)->name('clases');
     Route::get('/pagos', FacturacionPagos::class)->name('pagos');
-    Route::get('/tipos-membresia', GestionTiposMembresia::class)->name('tipos-membresia.index');
-    Route::get('/sucursales', GestionSucursales::class)->name('sucursales.index'); // Nueva ruta
+    Route::get('/tipos-membresia', GestionTiposMembresia::class)->name('tipos-membresia.index')->middleware(['role:Admin']);
+    Route::get('/sucursales', GestionSucursales::class)->name('sucursales.index')->middleware(['role:Admin']);
 
     // Placeholder for other routes like profile, etc.
     // Jetstream/Fortify usually provides /user/profile
