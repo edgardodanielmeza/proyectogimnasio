@@ -14,22 +14,22 @@ class DispositivoControlAcceso extends Model
     protected $table = 'dispositivos_control_acceso';
 
     protected $fillable = [
-        'sucursal_id',
         'nombre',
         'tipo',
-        'identificador_dispositivo',
-        'estado',
+        'sucursal_id',
         'ip_address',
-        'puerto',
+        'mac_address',
+        'estado',
+        'ultimo_heartbeat_at'
     ];
 
     public function sucursal(): BelongsTo
     {
-        return $this->belongsTo(Sucursal::class);
+        return $this->belongsTo(Sucursal::class); // App\Models\Sucursal
     }
 
     public function eventosAcceso(): HasMany
     {
-        return $this->hasMany(EventoAcceso::class);
+        return $this->hasMany(EventoAcceso::class); // App\Models\EventoAcceso
     }
 }

@@ -14,11 +14,13 @@ class EventoAcceso extends Model
 
     protected $fillable = [
         'miembro_id',
-        'dispositivo_control_acceso_id',
+        'dispositivo_control_acceso_id', // Nombre de FK consistente con la migración
         'sucursal_id',
         'fecha_hora',
-        'tipo_acceso_intentado',
+        'tipo_evento',
+        'metodo_acceso_utilizado',
         'resultado',
+        'notas',
     ];
 
     protected $casts = [

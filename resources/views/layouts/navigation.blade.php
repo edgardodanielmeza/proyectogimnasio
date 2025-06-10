@@ -22,35 +22,87 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-
                 </div>
+
+                @can('gestionar_miembros')
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('membresias')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('membresias')" :active="request()->routeIs('membresias')">
                         {{ __('Membresia') }}
                     </x-nav-link>
                 </div>
+                @endcan
+
+                @can('ver_informes_facturacion')
                  <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('pagos')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('pagos')" :active="request()->routeIs('pagos')">
                         {{ __('Pagos') }}
                     </x-nav-link>
                 </div>
+                @endcan
+
+                @can('registrar_acceso_manual')
                  <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('accesos.manual')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('accesos.manual')" :active="request()->routeIs('accesos.manual')">
                         {{ __('Acceso Manual') }}
                     </x-nav-link>
                 </div>
+                @endcan
+
+                @can('gestionar_tipos_membresia')
                    <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('tipos-membresia.index')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('tipos-membresia.index')" :active="request()->routeIs('tipos-membresia.index')">
                         {{ __('Tipos Membresia') }}
                     </x-nav-link>
                 </div>
+                @endcan
 
+                @can('gestionar_sucursales')
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('sucursales.index')" :active="request()->routeIs('sucursales.index')">
                         {{ __('Gestion de sucursales') }}
                     </x-nav-link>
                 </div>
+                @endcan
 
+                @can('gestionar_roles')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('gestion.roles')" :active="request()->routeIs('gestion.roles')">
+                        {{ __('Gestión de Roles') }}
+                    </x-nav-link>
+                </div>
+                @endcan
+
+                @can('gestionar_usuarios')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('usuarios.asignar-roles')" :active="request()->routeIs('usuarios.asignar-roles')">
+                        {{ __('Asignar Roles a Usuarios') }}
+                    </x-nav-link>
+                </div>
+                @endcan
+
+                @can('gestionar_dispositivos_acceso')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('dispositivos.index')" :active="request()->routeIs('dispositivos.index')">
+                        {{ __('Gest. Dispositivos') }}
+                    </x-nav-link>
+                </div>
+                @endcan
+
+                @can('ver_panel_monitoreo_dispositivos')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('panel.monitoreo.dispositivos')" :active="request()->routeIs('panel.monitoreo.dispositivos')">
+                        {{ __('Monitoreo Dispositivos') }}
+                    </x-nav-link>
+                </div>
+                @endcan
+
+                @can('ver_informes_acceso')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('informes.accesos')" :active="request()->routeIs('informes.accesos')">
+                        {{ __('Informe de Accesos') }}
+                    </x-nav-link>
+                </div>
+                @endcan
             </div>
 
             <!-- Settings Dropdown -->

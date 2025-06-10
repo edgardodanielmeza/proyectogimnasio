@@ -24,13 +24,17 @@ class Miembro extends Model
         'foto_path',
         'codigo_acceso_numerico',
         'plantilla_huella',
+        'acceso_habilitado',
         'sucursal_id',
+        'codigo_qr_temporal',
+        'codigo_qr_expira_at',
     ];
 
     protected $casts = [
         'fecha_nacimiento' => 'date',
-        // Consider hashing codigo_acceso_numerico if it's sensitive
-        // 'codigo_acceso_numerico' => 'hashed',
+        'acceso_habilitado' => 'boolean', // Asegurar que este cast esté presente
+        'codigo_qr_expira_at' => 'datetime',
+        // 'codigo_acceso_numerico' => 'hashed', // Considerar si se hashea
     ];
 
     public function membresias(): HasMany
@@ -73,5 +77,23 @@ class Miembro extends Model
     public function sucursal(): BelongsTo
     {
         return $this->belongsTo(Sucursal::class);
+    }
+
+    // --- Lógica de Código QR Temporal ---
+
+    public function generarCodigoQrTemporal($minutosParaExpirar = 60)
+    {
+        $this->codigo_qr_temporal = \Illuminate\Support\Str::random(40);
+        $this->codigo_qr_expira_at = \Carbon\Carbon::now()->addMinutes($minutosParaExpirar);
+        $this->save();
+
+        return $this->codigo_qr_temporal;
+    }
+
+    public function invalidarCodigoQrTemporal()
+    {
+        $this->codigo_qr_temporal = null;
+        $this->codigo_qr_expira_at = null;
+        $this->save();
     }
 }

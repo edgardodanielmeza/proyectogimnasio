@@ -27,6 +27,8 @@ class GestionMembresias extends Component
     public $sucursal_id;
     public $foto; // Para la nueva foto subida (Livewire\TemporaryUploadedFile)
     public $foto_actual_path; // Para mostrar la ruta de la foto existente al editar
+    public $codigo_acceso_numerico;
+    public $acceso_habilitado = true; // Default para nuevos registros y para el estado inicial del input
 
     // Propiedades para la membresía inicial (solo en creación)
     public $tipo_membresia_id;
@@ -58,6 +60,11 @@ class GestionMembresias extends Component
     public $membresiaParaCancelarId;
     public $membresiaParaCancelarInfo;
 
+    // Propiedades para el QR Code
+    public $codigoQrGenerado = null;
+    public $miembroConQr = null;
+    public $mostrandoModalQr = false; // Para controlar el modal del QR con Livewire directamente
+
     protected $paginationTheme = 'tailwind';
 
     public function mount()
@@ -84,12 +91,18 @@ class GestionMembresias extends Component
             'direccion' => 'nullable|string|max:255',
             'sucursal_id' => 'required|exists:sucursales,id',
             'foto' => 'nullable|image|max:2048',
+            'codigo_acceso_numerico' => 'nullable|string|min:4|max:20', // Validar si se provee uno nuevo
+            'acceso_habilitado' => 'required|boolean',
         ];
 
+        // Reglas específicas para la creación de un nuevo miembro (membresía inicial)
         if (!$this->miembroSeleccionadoId) {
             $rules['tipo_membresia_id'] = 'required|exists:tipos_membresia,id';
             $rules['fecha_inicio_membresia'] = 'required|date';
         }
+        // No añadir tipo_membresia_id ni fecha_inicio_membresia a las reglas de actualización aquí,
+        // ya que la membresía se gestiona por separado después de la creación del miembro.
+        // Si se quisiera permitir editar la membresía *inicial* desde este modal, se necesitaría otra lógica.
 
         return $rules;
     }
@@ -161,6 +174,8 @@ class GestionMembresias extends Component
         $this->fecha_inicio_membresia = now()->format('Y-m-d');
         $this->foto = null;
         $this->foto_actual_path = null;
+        $this->codigo_acceso_numerico = '';
+        $this->acceso_habilitado = true; // Por defecto habilitado para nuevos o al resetear
 
         // Resetear también los campos del sub-modal de gestión de membresías
         $this->miembroParaGestionarMembresias = null;
@@ -241,8 +256,11 @@ class GestionMembresias extends Component
         $this->sucursal_id = $miembro->sucursal_id;
         $this->foto_actual_path = $miembro->foto_path;
         $this->foto = null;
-        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
-        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        // Para edición, no mostrar el código actual (si está hasheado). Dejar en blanco para "no cambiar" o ingresar nuevo.
+        $this->codigo_acceso_numerico = '';
+        $this->acceso_habilitado = (bool) $miembro->acceso_habilitado; // Cargar estado actual
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null; // No se edita membresía aquí
+        $this->fecha_inicio_membresia = now()->format('Y-m-d'); // No se edita membresía aquí
         $this->resetErrorBag();
         $this->mostrandoModalRegistro = true;
     }
@@ -268,13 +286,22 @@ class GestionMembresias extends Component
                 'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
                 'direccion' => $validatedData['direccion'],
                 'sucursal_id' => $validatedData['sucursal_id'],
+                'acceso_habilitado' => $validatedData['acceso_habilitado'],
             ];
+
+            if (!empty($validatedData['codigo_acceso_numerico'])) {
+                $updateDataArr['codigo_acceso_numerico'] = Hash::make($validatedData['codigo_acceso_numerico']);
+            }
+            // Si 'codigo_acceso_numerico' está vacío en el formulario, no se incluye en $updateDataArr,
+            // por lo que no se actualizará en la base de datos (se mantiene el valor existente).
+
             if ($this->foto) {
                 if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
                     Storage::disk('public')->delete($miembro->foto_path);
                 }
                 $updateDataArr['foto_path'] = $this->foto->store('fotos_miembros', 'public');
             }
+
             $miembro->update($updateDataArr);
             session()->flash('message', 'Miembro actualizado exitosamente.');
         } else {
@@ -432,6 +459,27 @@ class GestionMembresias extends Component
         $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
         $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
         $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+    }
+
+    public function generarQrParaMiembro($miembroId)
+    {
+        $miembro = Miembro::find($miembroId);
+        if ($miembro && auth()->user()->can('gestionar_miembros')) { // O un permiso más específico si se crea
+            $this->codigoQrGenerado = $miembro->generarCodigoQrTemporal();
+            $this->miembroConQr = $miembro;
+            $this->mostrandoModalQr = true; // Abrir modal gestionado por Livewire
+            // session()->flash('message', 'Código QR generado para ' . $miembro->nombre . ' ' . $miembro->apellido . '. Válido por 60 minutos.');
+            // Usaremos el modal para mostrar la info, no un flash global.
+        } else {
+            session()->flash('error', 'No se pudo generar el código QR o no tiene permisos.');
+        }
+    }
+
+    public function cerrarModalQr()
+    {
+        $this->mostrandoModalQr = false;
+        $this->codigoQrGenerado = null;
+        $this->miembroConQr = null;
     }
 
     public function render()

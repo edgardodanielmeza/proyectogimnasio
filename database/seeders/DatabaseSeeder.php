@@ -60,6 +60,9 @@ class DatabaseSeeder extends Seeder
             'updated_at' => now()
         ]);
 
-
+        $this->call([
+            RoleSeeder::class,
+            // Otros seeders pueden ir aquí si los hubiera en el futuro
+        ]);
     }
 }

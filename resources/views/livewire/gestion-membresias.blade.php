@@ -103,6 +103,21 @@
                         @error('sucursal_id') <span class="text-danger text-xs">{{ $message }}</span> @enderror
                     </div>
 
+                    {{-- Nuevos campos para control de acceso --}}
+                    <div>
+                        <label for="codigo_acceso_numerico" class="block text-sm font-medium text-neutral-700">Código de Acceso (dejar vacío para no cambiar)</label>
+                        <input wire:model.defer="codigo_acceso_numerico" type="text" id="codigo_acceso_numerico" autocomplete="new-password" class="mt-1 block w-full border-neutral-300 rounded-md shadow-sm focus:border-primary focus:ring-primary sm:text-sm" placeholder="4-20 dígitos">
+                        @error('codigo_acceso_numerico') <span class="text-danger text-xs">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label for="acceso_habilitado" class="block text-sm font-medium text-neutral-700">Acceso Habilitado</label>
+                        <select wire:model.defer="acceso_habilitado" id="acceso_habilitado" class="mt-1 block w-full border-neutral-300 rounded-md shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                            <option value="1">Sí</option>
+                            <option value="0">No</option>
+                        </select>
+                        @error('acceso_habilitado') <span class="text-danger text-xs">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="md:col-span-2">
                         <label for="foto" class="block text-sm font-medium text-neutral-700">Foto del Miembro</label>
                         <input type="file" wire:model="foto" id="foto" class="mt-1 block w-full text-sm text-neutral-500
@@ -285,7 +300,10 @@
                                 <svg class="inline-block h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                             </button>
                             <button wire:click="abrirModalGestionMembresias({{ $miembro->id }})" class="text-green-600 hover:text-green-800 font-medium ml-2" title="Gestionar Membresías">
-                                <svg class="inline-block h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> {{-- Icono de tarjeta ID o perfil --}}
+                                <svg class="inline-block h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                            <button wire:click="generarQrParaMiembro({{ $miembro->id }})" class="text-blue-600 hover:text-blue-800 font-medium ml-2" title="Generar QR Temporal">
+                                <svg class="inline-block h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6.364 1.636l-.707.707M20 12h-1M4 12H3m15.364 6.364l-.707-.707M12 20v-1m-6.364-1.636l.707-.707M6 12H5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18a6 6 0 100-12 6 6 0 000 12z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14a2 2 0 100-4 2 2 0 000 4z"></path></svg> {{-- Icono de QR --}}
                             </button>
                             <button wire:click="confirmarEliminacionMiembro({{ $miembro->id }})" class="text-danger hover:text-danger-dark font-medium ml-2" title="Eliminar Miembro">
                                 <svg class="inline-block h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -342,6 +360,50 @@
                     </button>
                     <button wire:click="ocultarModalConfirmacionEliminar()" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:mt-0 sm:w-auto sm:text-sm">
                         Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal para Mostrar Código QR --}}
+    @if($mostrandoModalQr)
+    <div class="fixed z-60 inset-0 overflow-y-auto" aria-labelledby="modal-title-qr" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-neutral-500 bg-opacity-75 transition-opacity" aria-hidden="true" wire:click="cerrarModalQr()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-primary-light sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6.364 1.636l-.707.707M20 12h-1M4 12H3m15.364 6.364l-.707-.707M12 20v-1m-6.364-1.636l.707-.707M6 12H5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18a6 6 0 100-12 6 6 0 000 12z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14a2 2 0 100-4 2 2 0 000 4z"></path></svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-neutral-900" id="modal-title-qr">
+                                Código QR para @if($miembroConQr) {{ $miembroConQr->nombre }} {{ $miembroConQr->apellido }} @endif
+                            </h3>
+                            @if($codigoQrGenerado && $miembroConQr)
+                                <div class="mt-2">
+                                    <p class="text-sm text-neutral-600">
+                                        Este código QR es temporal y será válido por 60 minutos.
+                                        Expira: {{ $miembroConQr->codigo_qr_expira_at->format('d/m/Y H:i:s') }}
+                                    </p>
+                                    <div class="mt-4 text-center flex justify-center">
+                                        {!! QrCode::size(200)->generate($codigoQrGenerado) !!}
+                                    </div>
+                                    <p class="mt-3 text-center text-xs text-neutral-500 break-all">Valor: {{ $codigoQrGenerado }}</p>
+                                </div>
+                            @else
+                                <p class="mt-2 text-sm text-neutral-600">No se ha podido generar el código QR o no hay miembro seleccionado.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-neutral-100 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button wire:click="cerrarModalQr()" type="button"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:mt-0 sm:w-auto sm:text-sm">
+                        Cerrar
                     </button>
                 </div>
             </div>

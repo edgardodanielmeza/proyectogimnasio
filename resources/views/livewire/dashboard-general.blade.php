@@ -14,6 +14,7 @@
     {{-- Cards de estadísticas --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         {{-- Miembros Activos --}}
+        @can('gestionar_miembros')
         <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
             <div class="flex items-center">
                 <div class="p-2 rounded-full bg-white-50 mr-3">
@@ -27,8 +28,10 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         {{-- Membresías por Vencer --}}
+        @can('gestionar_miembros')
         <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
             <div class="flex items-center">
                 <div class="p-2 rounded-full bg-amber-50 mr-3">
@@ -43,8 +46,10 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         {{-- Ingresos del Mes --}}
+        @can('ver_informes_facturacion')
         <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
             <div class="flex items-center">
                 <div class="p-2 rounded-full bg-blue-50 mr-3">
@@ -58,18 +63,23 @@
                 </div>
             </div>
         </div>
+        @endcan
     </div>
 
     {{-- Sección de 2 columnas --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        @can('gestionar_miembros')
         <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
             <h3 class="text-sm font-semibold text-neutral-800 mb-2">Últimos Miembros</h3>
             <!-- Contenido de la tabla -->
         </div>
+        @endcan
+        @can('ver_eventos_acceso')
         <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
             <h3 class="text-sm font-semibold text-neutral-800 mb-2">Accesos Recientes</h3>
             <!-- Contenido de la tabla -->
         </div>
+        @endcan
     </div>
 
    

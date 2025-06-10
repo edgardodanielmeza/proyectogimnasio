@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('dispositivos_control_acceso', function (Blueprint $table) {
             $table->id();
+            $table->string('nombre');
+            $table->enum('tipo', ['teclado_numerico', 'biometrico_huella', 'biometrico_facial'])->default('teclado_numerico');
             $table->foreignId('sucursal_id')->constrained('sucursales')->onDelete('cascade');
-            $table->string('nombre'); // ej: "Puerta Principal", "Torno 1"
-            $table->string('tipo'); // teclado_numerico, biometrico_huella, biometrico_facial
-            $table->string('identificador_dispositivo')->unique(); // ID o serial del dispositivo físico
-            $table->string('estado'); // conectado, desconectado, error
             $table->ipAddress('ip_address')->nullable();
-            $table->integer('puerto')->nullable();
+            $table->macAddress('mac_address')->nullable();
+            $table->enum('estado', ['activo', 'inactivo', 'mantenimiento'])->default('activo');
+            $table->timestamp('ultimo_heartbeat_at')->nullable();
             $table->timestamps();
         });
     }

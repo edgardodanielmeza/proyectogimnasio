@@ -17,6 +17,7 @@ class TipoMembresia extends Model
         'descripcion',
         'duracion_dias',
         'precio',
+        'acceso_multisucursal',
     ];
 
     protected $casts = [
