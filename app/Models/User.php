@@ -4,13 +4,17 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+// use Spatie\Permission\Traits\HasRoles; // Uncomment if using Spatie Laravel Permissions
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    // use HasFactory, Notifiable, HasRoles; // Uncomment if using Spatie Laravel Permissions
+    use HasFactory, Notifiable; // Comment this line if using Spatie Laravel Permissions
 
     /**
      * The attributes that are mass assignable.
@@ -19,8 +23,12 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'apellido', // Added
         'email',
         'password',
+        'sucursal_id', // Added
+        'activo', // Added
+        'foto_path', // Added
     ];
 
     /**
@@ -43,6 +51,23 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'activo' => 'boolean', // Added
         ];
     }
+
+    // Relationships
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    /**
+     * The roles that belong to the user.
+     * Uncomment if using Spatie or manual implementation.
+     */
+    // public function roles(): BelongsToMany
+    // {
+    //    return $this->belongsToMany(Rol::class, 'usuario_rol');
+    // }
 }
