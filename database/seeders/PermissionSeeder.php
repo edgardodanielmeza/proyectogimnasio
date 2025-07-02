@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
@@ -49,7 +48,8 @@ class PermissionSeeder extends Seeder
             // Permisos para Control de Acceso
             'registrar acceso manual',
             'ver log accesos',
-            'gestionar dispositivos acceso', // CRUD de dispositivos
+            'gestionar dispositivos acceso', // CRUD de dispositivos (ver, crear, editar, eliminar)
+            'ver panel monitoreo dispositivos', // Para el panel de estado de dispositivos
 
             // Permisos para Usuarios del sistema
             'ver lista usuarios',
@@ -67,16 +67,16 @@ class PermissionSeeder extends Seeder
 
             // Permisos para Dashboard
             'ver dashboard general',
-            'ver dashboard sucursal', // Si aplica
+            // 'ver dashboard sucursal', // Si se implementa un dashboard específico por sucursal
 
-            // Permisos para Clases (si se implementa)
+            // Permisos para Clases (Futuro)
             // 'ver lista clases',
             // 'crear clase',
             // 'editar clase',
             // 'eliminar clase',
             // 'inscribir miembro a clase',
 
-            // Permisos para Productos (si se implementa)
+            // Permisos para Productos (Futuro)
             // 'ver lista productos',
             // 'crear producto',
             // 'editar producto',
@@ -85,10 +85,12 @@ class PermissionSeeder extends Seeder
             // 'registrar venta producto',
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::findOrCreate($permission, 'web');
+        $count = 0;
+        foreach ($permissions as $permissionName) {
+            Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
+            $count++;
         }
 
-        $this->command->info('Permisos base creados exitosamente.');
+        $this->command->info($count . ' permisos base creados o verificados exitosamente.');
     }
 }

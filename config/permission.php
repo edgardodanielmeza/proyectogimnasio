@@ -86,6 +86,10 @@ return [
          *
          * For example, if you've changed the primary key name of your Team model
          * to `uuid`, you can set it here to `uuid`.
+         *
+         * Note: `team_foreign_key` is used by the HasPermissions and HasRoles traits
+         * in the context of teams. If you are not using teams, this setting
+         * is irrelevant.
          */
 
         'team_foreign_key' => 'team_id',
@@ -109,7 +113,8 @@ return [
      * the model and the permission or role model. This will result in an
      * additional query for each check. You can disable this if you
      * manually maintain the relationship between the model and the
-     * permission or role model.
+     * permission or role model. In production, you should set this to false
+     * if you do not need this check.
      */
     'check_database_consistency' => true,
 

@@ -13,27 +13,45 @@ return new class extends Migration
     {
         Schema::table('dispositivos_control_acceso', function (Blueprint $table) {
             // Renombrar columna tipo a tipo_dispositivo
-            if (Schema::hasColumn('dispositivos_control_acceso', 'tipo')) {
+            // Solo intentar renombrar si 'tipo' existe Y 'tipo_dispositivo' NO existe
+            if (Schema::hasColumn('dispositivos_control_acceso', 'tipo') && !Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo')) {
                 $table->renameColumn('tipo', 'tipo_dispositivo');
-            } elseif (!Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo')) {
-                $table->string('tipo_dispositivo')->after('nombre'); // Si 'tipo' no existía, la creamos
+            }
+            // Si 'tipo' no existe pero 'tipo_dispositivo' tampoco, la creamos (escenario poco probable si la migración original corrió)
+            // Aseguramos que se coloque después de 'nombre' si se crea aquí.
+            elseif (!Schema::hasColumn('dispositivos_control_acceso', 'tipo') && !Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo')) {
+                $existing_columns = Schema::getColumnListing('dispositivos_control_acceso');
+                if (in_array('nombre', $existing_columns)) {
+                    $table->string('tipo_dispositivo')->after('nombre')->comment('Ej: teclado_numerico, biometrico_huella');
+                } else {
+                    $table->string('tipo_dispositivo')->comment('Ej: teclado_numerico, biometrico_huella');
+                }
             }
 
-            // Añadir mac_address
+            // Añadir mac_address si no existe
             if (!Schema::hasColumn('dispositivos_control_acceso', 'mac_address')) {
-                $table->string('mac_address')->nullable()->unique()->after('ip_address');
+                $existing_columns = Schema::getColumnListing('dispositivos_control_acceso');
+                if (in_array('ip_address', $existing_columns)) {
+                    $table->string('mac_address')->nullable()->unique()->after('ip_address');
+                } else {
+                    $table->string('mac_address')->nullable()->unique();
+                }
             }
 
-            // Añadir configuracion_adicional
+            // Añadir configuracion_adicional si no existe
             if (!Schema::hasColumn('dispositivos_control_acceso', 'configuracion_adicional')) {
-                $table->json('configuracion_adicional')->nullable()->after('puerto');
+                 $existing_columns = Schema::getColumnListing('dispositivos_control_acceso');
+                if (in_array('puerto', $existing_columns)) {
+                    $table->json('configuracion_adicional')->nullable()->after('puerto');
+                } else {
+                     $table->json('configuracion_adicional')->nullable();
+                }
             }
 
-            // Asegurar que 'estado' exista, si no, añadirlo.
-            // Los estados podrían ser: 'activo', 'inactivo', 'error', 'mantenimiento'
-            // La migración original ya crea 'estado' como string.
-            // Se puede considerar cambiarlo a un enum si la BD lo soporta y se prefiere.
-            // Por ahora, se asume que 'estado' ya existe como string.
+            // Modificar 'estado' para asegurar que sea compatible con los nuevos estados definidos en el modelo.
+            if (Schema::hasColumn('dispositivos_control_acceso', 'estado')) {
+                 $table->string('estado')->comment('Ej: activo, inactivo, error, mantenimiento')->change();
+            }
         });
     }
 
@@ -43,16 +61,28 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('dispositivos_control_acceso', function (Blueprint $table) {
+            // Solo intentar renombrar si 'tipo_dispositivo' existe Y 'tipo' NO existe
             if (Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo') && !Schema::hasColumn('dispositivos_control_acceso', 'tipo')) {
                 $table->renameColumn('tipo_dispositivo', 'tipo');
             }
 
             if (Schema::hasColumn('dispositivos_control_acceso', 'mac_address')) {
+                // Para hacer el drop de una columna unique, a veces es necesario primero dropear el índice.
+                // El nombre del índice podría ser: $table->dropUnique('dispositivos_control_acceso_mac_address_unique');
+                // o ['mac_address'] si es el nombre por defecto.
+                // Por seguridad, intentamos dropear el índice explícitamente si existe.
+                // Esto puede variar según la base de datos. En MySQL, dropear la columna usualmente dropea el índice.
+                // Si da problemas, se podría necesitar un if(DB::getDriverName() === 'mysql') y sintaxis específica.
+                // $table->dropUnique(['mac_address']); // Comentado por ahora, Laravel suele manejarlo.
                 $table->dropColumn('mac_address');
             }
 
             if (Schema::hasColumn('dispositivos_control_acceso', 'configuracion_adicional')) {
                 $table->dropColumn('configuracion_adicional');
+            }
+
+            if (Schema::hasColumn('dispositivos_control_acceso', 'estado')) {
+                 $table->string('estado')->comment('')->change(); // Remover comentario específico
             }
         });
     }

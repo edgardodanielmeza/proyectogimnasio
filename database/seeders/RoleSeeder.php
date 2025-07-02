@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\User;
+use App\Models\Sucursal;
 use Illuminate\Support\Facades\Hash;
 
 class RoleSeeder extends Seeder
@@ -16,14 +17,14 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         // Crear Roles
-        $adminRole = Role::findOrCreate('Admin', 'web');
-        $recepcionistaRole = Role::findOrCreate('Recepcionista', 'web');
-        $instructorRole = Role::findOrCreate('Instructor', 'web'); // Aunque no tenga permisos definidos aún
+        $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $recepcionistaRole = Role::firstOrCreate(['name' => 'Recepcionista', 'guard_name' => 'web']);
+        $instructorRole = Role::firstOrCreate(['name' => 'Instructor', 'guard_name' => 'web']);
 
-        $this->command->info('Roles Admin, Recepcionista e Instructor creados.');
+        $this->command->info('Roles Admin, Recepcionista e Instructor creados/verificados.');
 
         // Asignar todos los permisos al rol de Admin
-        $allPermissions = Permission::all();
+        $allPermissions = Permission::pluck('id', 'id')->all(); // Obtener todos los IDs de permisos
         $adminRole->syncPermissions($allPermissions);
         $this->command->info('Todos los permisos asignados al rol Admin.');
 
@@ -34,103 +35,89 @@ class RoleSeeder extends Seeder
             'editar miembro',
             'ver miembro',
             'gestionar membresias miembro',
-            'ver lista tipos membresia', // Solo ver, no CRUD completo
+            'ver lista tipos membresia',
             'ver lista pagos',
             'registrar pago',
             'registrar acceso manual',
-            'ver log accesos', // Ver log general o de su sucursal
-            'ver dashboard general', // O un dashboard específico para recepción
-            // Podría tener permisos para ver productos y registrar ventas si aplica
+            'ver log accesos',
+            'ver dashboard general',
         ];
-        foreach ($recepcionistaPermissions as $permissionName) {
-            $permission = Permission::where('name', $permissionName)->first();
-            if ($permission) {
-                $recepcionistaRole->givePermissionTo($permission);
-            } else {
-                $this->command->warn("Permiso '{$permissionName}' no encontrado, no se asignó a Recepcionista.");
-            }
-        }
-        $this->command->info('Permisos asignados al rol Recepcionista.');
+        $recepcionistaPermObjects = Permission::whereIn('name', $recepcionistaPermissions)->get();
+        $recepcionistaRole->syncPermissions($recepcionistaPermObjects);
+        $this->command->info(count($recepcionistaPermissions) . ' permisos asignados al rol Recepcionista.');
 
-        // Permisos para Instructor (ejemplo básico, expandir según necesidad)
+        // Permisos para Instructor (ejemplo básico)
         $instructorPermissions = [
-            'ver lista miembros', // Para ver quiénes son sus alumnos, etc.
+            'ver lista miembros',
             'ver miembro',
-            // 'ver lista clases',
-            // 'inscribir miembro a clase',
-            // 'tomar asistencia clase',
+            'ver dashboard general', // Quizás un dashboard limitado
         ];
-        // foreach ($instructorPermissions as $permissionName) {
-        //     $permission = Permission::where('name', $permissionName)->first();
-        //     if ($permission) {
-        //         $instructorRole->givePermissionTo($permission);
-        //     } else {
-        //         $this->command->warn("Permiso '{$permissionName}' no encontrado, no se asignó a Instructor.");
-        //     }
-        // }
-        // $this->command->info('Permisos asignados al rol Instructor.');
+        $instructorPermObjects = Permission::whereIn('name', $instructorPermissions)->get();
+        $instructorRole->syncPermissions($instructorPermObjects);
+        $this->command->info(count($instructorPermissions) . ' permisos asignados al rol Instructor.');
 
 
-        // Asignar rol Admin al usuario admin@gim.com
-        $adminUser = User::where('email', 'admin@gim.com')->first();
-        if ($adminUser) {
-            if (!$adminUser->hasRole('Admin')) {
-                $adminUser->assignRole('Admin');
-                $this->command->info('Rol Admin asignado al usuario admin@gim.com.');
-            } else {
-                $this->command->info('Usuario admin@gim.com ya tiene el rol Admin.');
-            }
-        } else {
-            $this->command->warn('Usuario admin@gim.com no encontrado, no se pudo asignar rol Admin.');
-            // Considerar crear el usuario admin aquí si no existe, aunque el DatabaseSeeder principal ya lo hace.
-            // Este seeder de roles debería ejecutarse DESPUÉS de que el usuario admin exista.
+        // --- Crear/Asignar Usuarios ---
+        $sucursalCentral = Sucursal::where('nombre', 'Sucursal Central')->first();
+        if (!$sucursalCentral) {
+            // Crear sucursal central si no existe (DatabaseSeeder también lo hace, pero como fallback)
+            $sucursalCentral = Sucursal::firstOrCreate(
+                ['nombre' => 'Sucursal Central'],
+                ['direccion' => 'Av. Principal 123, Ciudad', 'telefono' => '555-1234']
+            );
+            $this->command->info('Sucursal Central creada/verificada por RoleSeeder.');
         }
 
-        // Crear un usuario de ejemplo para Recepcionista si no existe
-        $recepcionistaUser = User::where('email', 'recepcion@gim.com')->first();
-        if (!$recepcionistaUser) {
-            $sucursalCentral = \App\Models\Sucursal::where('nombre', 'Sucursal Central')->first();
-            $recepcionistaUser = User::create([
+        // Usuario Admin
+        $adminUser = User::firstOrCreate(
+            ['email' => 'admin@gim.com'],
+            [
+                'name' => 'Admin',
+                'apellido' => 'Gimnasio',
+                'password' => Hash::make('rootadmin123'), // Cambiar en producción
+                'sucursal_id' => $sucursalCentral->id,
+                'activo' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+        if ($adminUser->wasRecentlyCreated || !$adminUser->hasRole('Admin')) {
+            $adminUser->assignRole('Admin');
+            $this->command->info('Usuario admin@gim.com creado/actualizado y asignado rol Admin.');
+        }
+
+
+        // Usuario Recepcionista
+        $recepcionistaUser = User::firstOrCreate(
+            ['email' => 'recepcion@gim.com'],
+            [
                 'name' => 'Recepcionista',
                 'apellido' => 'Gimnasio',
-                'email' => 'recepcion@gim.com',
-                'password' => Hash::make('password123'),
-                'sucursal_id' => $sucursalCentral ? $sucursalCentral->id : null, // Asignar a sucursal central si existe
+                'password' => Hash::make('password123'), // Cambiar en producción
+                'sucursal_id' => $sucursalCentral->id,
                 'activo' => true,
-            ]);
-            $this->command->info('Usuario recepcion@gim.com creado.');
-        }
-        if ($recepcionistaUser) {
-             if (!$recepcionistaUser->hasRole('Recepcionista')) {
-                $recepcionistaUser->assignRole('Recepcionista');
-                $this->command->info('Rol Recepcionista asignado al usuario recepcion@gim.com.');
-            } else {
-                $this->command->info('Usuario recepcion@gim.com ya tiene el rol Recepcionista.');
-            }
+                'email_verified_at' => now(),
+            ]
+        );
+        if ($recepcionistaUser->wasRecentlyCreated || !$recepcionistaUser->hasRole('Recepcionista')) {
+            $recepcionistaUser->assignRole('Recepcionista');
+            $this->command->info('Usuario recepcion@gim.com creado/actualizado y asignado rol Recepcionista.');
         }
 
-
-        // Crear un usuario de ejemplo para Instructor si no existe
-        // $instructorUser = User::where('email', 'instructor@gim.com')->first();
-        // if (!$instructorUser) {
-        //     $sucursalCentral = \App\Models\Sucursal::where('nombre', 'Sucursal Central')->first();
-        //     $instructorUser = User::create([
+        // Usuario Instructor (Opcional)
+        // $instructorUser = User::firstOrCreate(
+        //     ['email' => 'instructor@gim.com'],
+        //     [
         //         'name' => 'Instructor',
         //         'apellido' => 'Fitness',
-        //         'email' => 'instructor@gim.com',
-        //         'password' => Hash::make('password123'),
-        //         'sucursal_id' => $sucursalCentral ? $sucursalCentral->id : null,
+        //         'password' => Hash::make('password123'), // Cambiar en producción
+        //         'sucursal_id' => $sucursalCentral->id,
         //         'activo' => true,
-        //     ]);
-        //     $this->command->info('Usuario instructor@gim.com creado.');
-        // }
-        // if ($instructorUser) {
-        //      if (!$instructorUser->hasRole('Instructor')) {
-        //         $instructorUser->assignRole('Instructor');
-        //         $this->command->info('Rol Instructor asignado al usuario instructor@gim.com.');
-        //     } else {
-        //         $this->command->info('Usuario instructor@gim.com ya tiene el rol Instructor.');
-        //     }
+        //         'email_verified_at' => now(),
+        //     ]
+        // );
+        // if ($instructorUser->wasRecentlyCreated || !$instructorUser->hasRole('Instructor')) {
+        //     $instructorUser->assignRole('Instructor');
+        //     $this->command->info('Usuario instructor@gim.com creado/actualizado y asignado rol Instructor.');
         // }
     }
 }

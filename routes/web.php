@@ -3,22 +3,31 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController; // Aunque no se use directamente aquí, es parte de auth.
 use App\Livewire\DashboardGeneral;
 use App\Livewire\GestionMembresias;
 use App\Livewire\FacturacionPagos;
 use App\Livewire\RegistroAccesoManual;
 use App\Livewire\GestionTiposMembresia;
 use App\Livewire\GestionSucursales;
+use App\Livewire\GestionRoles;
+use App\Livewire\GestionUsuarios;
+use App\Livewire\GestionDispositivos;
 
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-     ->name('logout');
+     ->name('logout')
+     ->middleware('auth'); // Logout solo para autenticados
 
 
+// Ruta de fallback para '/' si el usuario está autenticado, redirige a dashboard.
+// Si no, Laravel Breeze maneja la redirección a login.
 Route::get('/', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return view('auth.login'); // O la vista de bienvenida que tengas
+})->name('home.redirect');
 
 
 Route::middleware('auth')->group(function () {
@@ -26,7 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/dashboard', DashboardGeneral::class)->name('dashboard')->middleware('can:ver dashboard general');
+    Route::get('/dashboard', DashboardGeneral::class)
+        ->name('dashboard')
+        ->middleware('can:ver dashboard general');
 
     Route::get('/sucursales', GestionSucursales::class)
         ->name('sucursales.index')
@@ -48,20 +59,20 @@ Route::middleware('auth')->group(function () {
         ->name('accesos.manual')
         ->middleware('can:registrar acceso manual');
 
-    // Rutas de Administración de Roles y Permisos
-    Route::get('/gestion-roles', \App\Livewire\GestionRoles::class)
-        ->name('roles.index')
+    // Rutas de Administración del Sistema
+    Route::get('/admin/roles', GestionRoles::class) // Prefijo 'admin/' para claridad
+        ->name('admin.roles.index')
         ->middleware('can:ver lista roles');
 
-    Route::get('/gestion-usuarios', \App\Livewire\GestionUsuarios::class)
-        ->name('usuarios.index')
+    Route::get('/admin/usuarios', GestionUsuarios::class)
+        ->name('admin.usuarios.index')
         ->middleware('can:ver lista usuarios');
 
-    Route::get('/gestion-dispositivos', \App\Livewire\GestionDispositivos::class)
-        ->name('dispositivos.index')
+    Route::get('/admin/dispositivos', GestionDispositivos::class)
+        ->name('admin.dispositivos.index')
         ->middleware('can:gestionar dispositivos acceso');
 
- });
+});
 
 
 require __DIR__.'/auth.php';

@@ -8,27 +8,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles; // Uncomment if using Spatie Laravel Permissions
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles; // Uncomment if using Spatie Laravel Permissions
-    // use HasFactory, Notifiable; // Comment this line if using Spatie Laravel Permissions
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
-        'apellido', // Added
+        'apellido',
         'email',
         'password',
-        'sucursal_id', // Added
-        'activo', // Added
-        'foto_path', // Added
+        'sucursal_id', // Asegúrate que la migración users.sucursal_id permita nulos o tenga un onDelete('set null')
+        'activo',
+        'foto_path',
     ];
 
     /**

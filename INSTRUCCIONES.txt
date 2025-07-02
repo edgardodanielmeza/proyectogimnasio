@@ -101,9 +101,10 @@ de gestión de gimnasio desarrollado en Laravel en un entorno WAMP en Windows.
         Esto llenará la variable `APP_KEY` en tu archivo `.env`.
 
 **6. Ejecutar las Migraciones de la Base de Datos:**
-    1.  Revisa tu carpeta `database/migrations/`. Si tienes migraciones antiguas para roles y permisos creadas manualmente (ej: `create_roles_table.php`, `create_permisos_table.php`), considera eliminarlas o renombrarlas (cambiando la extensión a `.php.bak`) para evitar conflictos con las tablas que creará la migración de Spatie. Las tablas de Spatie son las que se deben usar.
-    2.  Asegúrate de que el archivo de migración para modificar la tabla de dispositivos (`YYYY_MM_DD_HHMMSS_modify_dispositivos_control_acceso_table.php`) tenga la fecha y hora correctas en su nombre para que se ejecute después de la migración original de dispositivos.
-    3.  Ejecuta las migraciones para crear todas las tablas, incluyendo las de Spatie y las modificaciones de dispositivos:
+    1.  **Importante:** Antes de ejecutar las migraciones, asegúrate de haber renombrado la migración `0001_01_01_000000_create_users_table.php` a un timestamp posterior al de la migración `2025_06_03_154117_create_sucursales_table.php` (ej. `2025_06_03_154118_create_users_table.php`). Esto es crucial para evitar errores de clave foránea.
+    2.  Revisa tu carpeta `database/migrations/`. Si tienes migraciones antiguas para roles y permisos creadas manualmente (ej: `create_roles_table.php`, `create_permisos_table.php`), considera eliminarlas o renombrarlas (cambiando la extensión a `.php.bak`) para evitar conflictos con las tablas que creará la migración de Spatie. Las tablas de Spatie son las que se deben usar.
+    3.  Asegúrate de que el archivo de migración para modificar la tabla de dispositivos (`YYYY_MM_DD_HHMMSS_modify_dispositivos_control_acceso_table.php`) tenga la fecha y hora correctas en su nombre para que se ejecute después de la migración original de dispositivos y después de la migración de Spatie.
+    4.  Ejecuta las migraciones para crear todas las tablas:
         ```bash
         php artisan migrate
         ```

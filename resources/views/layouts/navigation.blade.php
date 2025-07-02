@@ -3,22 +3,22 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex">
-
-
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                        
-                           
                     <a href="{{ route('dashboard') }}">
-                       <img class="h-10 w-10 rounded-full object-cover" src="{{ asset('storage/logo1.jpg') }}" alt="Logo">
+                       <img class="h-10 w-auto rounded-full object-cover" src="{{ asset('storage/logo1.jpg') }}" alt="{{ config('app.name', 'Laravel') }}">
                     </a>
-                       
                 </div>
-                <div class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-500 dark:text-blue-400 bg-white dark:bg-gray-800 hover:text-red-700 dark:hover:text-red-300 focus:outline-none transition ease-in-out duration-150">
-                    {{ Auth::user()->sucursal->nombre }}
+
+                <!-- Sucursal Info -->
+                @if(Auth::check() && Auth::user()->sucursal)
+                <div class="hidden sm:inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 focus:outline-none transition ease-in-out duration-150">
+                    Suc: {{ Auth::user()->sucursal->nombre }}
                 </div>
+                @endif
+
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-4 sm:-my-px sm:ms-6 sm:flex">
                     @can('ver dashboard general')
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
@@ -33,7 +33,7 @@
 
                     @can('ver lista tipos membresia')
                      <x-nav-link :href="route('tipos-membresia.index')" :active="request()->routeIs('tipos-membresia.index')">
-                        {{ __('Tipos Membresía') }}
+                        {{ __('Tipos Memb.') }}
                     </x-nav-link>
                     @endcan
 
@@ -45,21 +45,21 @@
 
                     @can('ver lista pagos')
                      <x-nav-link :href="route('pagos')" :active="request()->routeIs('pagos')">
-                        {{ __('Facturación y Pagos') }}
+                        {{ __('Pagos') }}
                     </x-nav-link>
                     @endcan
 
                     @can('registrar acceso manual')
                      <x-nav-link :href="route('accesos.manual')" :active="request()->routeIs('accesos.manual')">
-                        {{ __('Acceso Manual') }}
+                        {{ __('Acc. Manual') }}
                     </x-nav-link>
                     @endcan
                 </div>
 
                 {{-- Grupo de Administración del Sistema --}}
-                @if(Auth::check() && Auth::user()->hasAnyPermission(['ver lista roles', 'ver lista usuarios']))
+                @if(Auth::check() && Auth::user()->hasAnyPermission(['ver lista roles', 'ver lista usuarios', 'gestionar dispositivos acceso']))
                 <div class="hidden sm:flex sm:items-center sm:ms-6">
-                    <x-dropdown align="left" width="48"> {{-- Changed align to left for potentially better fit --}}
+                    <x-dropdown align="left" width="56"> {{-- Ancho ajustado --}}
                         <x-slot name="trigger">
                             <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
                                 <div>Administración</div>
@@ -72,20 +72,20 @@
                         </x-slot>
                         <x-slot name="content">
                             @can('ver lista roles')
-                            <x-dropdown-link :href="route('roles.index')" :active="request()->routeIs('roles.index')">
+                            <x-dropdown-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.index')">
                                 {{ __('Gestión de Roles') }}
                             </x-dropdown-link>
                             @endcan
                             @can('ver lista usuarios')
-                            <x-dropdown-link :href="route('usuarios.index')" :active="request()->routeIs('usuarios.index')">
+                            <x-dropdown-link :href="route('admin.usuarios.index')" :active="request()->routeIs('admin.usuarios.index')">
                                 {{ __('Gestión de Usuarios') }}
                             </x-dropdown-link>
                             @endcan
-                                    @can('gestionar dispositivos acceso')
-                                    <x-dropdown-link :href="route('dispositivos.index')" :active="request()->routeIs('dispositivos.index')">
-                                        {{ __('Gestión de Dispositivos') }}
-                                    </x-dropdown-link>
-                                    @endcan
+                            @can('gestionar dispositivos acceso')
+                            <x-dropdown-link :href="route('admin.dispositivos.index')" :active="request()->routeIs('admin.dispositivos.index')">
+                                {{ __('Gestión de Dispositivos') }}
+                            </x-dropdown-link>
+                            @endcan
                             {{-- Aquí se podrían añadir más enlaces de administración --}}
                         </x-slot>
                     </x-dropdown>
@@ -98,8 +98,12 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
-                          
+                            @if(Auth::check())
+                                <div>{{ Auth::user()->name }}</div>
+                                @if(Auth::user()->foto_path)
+                                    <img class="h-8 w-8 rounded-full object-cover ms-2" src="{{ asset('storage/' . Auth::user()->foto_path) }}" alt="{{ Auth::user()->name }}">
+                                @endif
+                            @endif
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -110,17 +114,16 @@
 
                     <x-slot name="content">
                         <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
+                            {{ __('Mi Perfil') }}
                         </x-dropdown-link>
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                                {{ __('Cerrar Sesión') }}
                             </x-dropdown-link>
                         </form>
                     </x-slot>
@@ -154,7 +157,7 @@
             @endcan
             @can('ver lista tipos membresia')
             <x-responsive-nav-link :href="route('tipos-membresia.index')" :active="request()->routeIs('tipos-membresia.index')">
-                {{ __('Tipos Membresía') }}
+                {{ __('Tipos Memb.') }}
             </x-responsive-nav-link>
             @endcan
             @can('ver lista sucursales')
@@ -164,62 +167,63 @@
             @endcan
             @can('ver lista pagos')
             <x-responsive-nav-link :href="route('pagos')" :active="request()->routeIs('pagos')">
-                {{ __('Facturación y Pagos') }}
+                {{ __('Pagos') }}
             </x-responsive-nav-link>
             @endcan
             @can('registrar acceso manual')
             <x-responsive-nav-link :href="route('accesos.manual')" :active="request()->routeIs('accesos.manual')">
-                {{ __('Acceso Manual') }}
+                {{ __('Acc. Manual') }}
             </x-responsive-nav-link>
             @endcan
         </div>
 
         {{-- Responsive Admin Links --}}
-        @if(Auth::check() && Auth::user()->hasAnyPermission(['ver lista roles', 'ver lista usuarios']))
+        @if(Auth::check() && Auth::user()->hasAnyPermission(['ver lista roles', 'ver lista usuarios', 'gestionar dispositivos acceso']))
             <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
                 <div class="px-4">
                     <div class="font-medium text-base text-gray-800 dark:text-gray-200">Administración</div>
                 </div>
                 <div class="mt-3 space-y-1">
                     @can('ver lista roles')
-                        <x-responsive-nav-link :href="route('roles.index')" :active="request()->routeIs('roles.index')">
+                        <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.index')">
                             {{ __('Gestión de Roles') }}
                         </x-responsive-nav-link>
                     @endcan
                     @can('ver lista usuarios')
-                        <x-responsive-nav-link :href="route('usuarios.index')" :active="request()->routeIs('usuarios.index')">
+                        <x-responsive-nav-link :href="route('admin.usuarios.index')" :active="request()->routeIs('admin.usuarios.index')">
                             {{ __('Gestión de Usuarios') }}
                         </x-responsive-nav-link>
                     @endcan
-                                    @can('gestionar dispositivos acceso')
-                                        <x-responsive-nav-link :href="route('dispositivos.index')" :active="request()->routeIs('dispositivos.index')">
-                                            {{ __('Gestión de Dispositivos') }}
-                                        </x-responsive-nav-link>
-                                    @endcan
+                    @can('gestionar dispositivos acceso')
+                        <x-responsive-nav-link :href="route('admin.dispositivos.index')" :active="request()->routeIs('admin.dispositivos.index')">
+                            {{ __('Gestión de Dispositivos') }}
+                        </x-responsive-nav-link>
+                    @endcan
                 </div>
             </div>
         @endif
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-            </div>
+            @if(Auth::check())
+                <div class="px-4">
+                    <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
+                    <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                </div>
+            @endif
 
             <div class="mt-3 space-y-1">
                 <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Profile') }}
+                    {{ __('Mi Perfil') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">
-                        {{ __('Log Out') }}
+                        {{ __('Cerrar Sesión') }}
                     </x-responsive-nav-link>
                 </form>
             </div>
