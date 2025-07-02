@@ -76,29 +76,42 @@ de gestión de gimnasio desarrollado en Laravel en un entorno WAMP en Windows.
 
 **4. Instalar Dependencias de PHP (Composer):**
     1.  Abre una terminal en el directorio raíz de tu proyecto.
-    2.  Ejecuta el siguiente comando para instalar las librerías de PHP:
+    2.  Instala las dependencias principales del proyecto:
         ```bash
         composer install --no-interaction --prefer-dist --optimize-autoloader
         ```
         Si encuentras problemas de memoria, puedes intentar: `php -d memory_limit=-1 /ruta/a/composer.phar install ...`
+    3.  Instala el paquete para gestión de roles y permisos (Spatie Laravel Permission):
+        ```bash
+        composer require spatie/laravel-permission
+        ```
         Esto puede tardar unos minutos.
 
-**5. Generar la Clave de Aplicación Laravel:**
-    1.  En la misma terminal, ejecuta:
+**5. Configurar Paquetes Adicionales y Generar Clave:**
+    1.  Publica los archivos de configuración y migraciones del paquete Spatie Permission:
+        ```bash
+        php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider" --tag="permission-config"
+        php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider" --tag="permission-migrations"
+        ```
+        (Nota: El archivo `config/permission.php` fue creado manualmente por el agente, pero puedes ejecutar el primer comando para asegurar que esté actualizado si lo deseas. El segundo comando copiará el archivo de migración de Spatie a tu carpeta `database/migrations/`).
+    2.  Genera la Clave de Aplicación Laravel (si no lo hiciste antes o si `APP_KEY` está vacía en `.env`):
         ```bash
         php artisan key:generate
         ```
         Esto llenará la variable `APP_KEY` en tu archivo `.env`.
 
 **6. Ejecutar las Migraciones de la Base de Datos:**
-    1.  Este comando creará todas las tablas en tu base de datos (`gimnasio_db`):
+    1.  Revisa tu carpeta `database/migrations/`. Si tienes migraciones antiguas para roles y permisos creadas manualmente (ej: `create_roles_table.php`, `create_permisos_table.php`), considera eliminarlas o renombrarlas (cambiando la extensión a `.php.bak`) para evitar conflictos con las tablas que creará la migración de Spatie. Las tablas de Spatie son las que se deben usar.
+    2.  Asegúrate de que el archivo de migración para modificar la tabla de dispositivos (`YYYY_MM_DD_HHMMSS_modify_dispositivos_control_acceso_table.php`) tenga la fecha y hora correctas en su nombre para que se ejecute después de la migración original de dispositivos.
+    3.  Ejecuta las migraciones para crear todas las tablas, incluyendo las de Spatie y las modificaciones de dispositivos:
         ```bash
         php artisan migrate
         ```
-    2.  (Opcional) Si necesitas datos de prueba (seeders), ejecuta:
+    4.  Ejecuta los seeders para poblar la base de datos con datos iniciales, incluyendo roles, permisos y usuarios de ejemplo:
         ```bash
         php artisan db:seed
         ```
+        Esto es importante para tener el usuario Admin y los roles básicos configurados.
 
 **7. Instalar Dependencias de Frontend (NPM):**
     1.  En la misma terminal, ejecuta:

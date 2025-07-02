@@ -97,6 +97,8 @@ class GestionTiposMembresia extends Component
     // --- Operaciones CRUD ---
     public function guardarTipoMembresia()
     {
+        $this->authorize('crear tipo membresia');
+
         // Si hay un ID, debería ser una actualización, pero el flujo de UI debe llamar a actualizarTipoMembresia.
         // Esta guarda es solo para nuevos.
         if($this->modoEdicion || $this->tipoMembresiaId) {
@@ -135,6 +137,8 @@ class GestionTiposMembresia extends Component
 
     public function actualizarTipoMembresia()
     {
+        $this->authorize('editar tipo membresia');
+
         if (!$this->tipoMembresiaId || !$this->modoEdicion) {
             session()->flash('error', 'Error al actualizar: No hay tipo de membresía seleccionado para edición.');
             $this->cerrarModal();
@@ -162,6 +166,8 @@ class GestionTiposMembresia extends Component
 
     public function eliminarTipoMembresia()
     {
+        $this->authorize('eliminar tipo membresia');
+
         if ($this->tipoMembresiaParaEliminarId) {
             $tipoMembresia = TipoMembresia::find($this->tipoMembresiaParaEliminarId);
 
