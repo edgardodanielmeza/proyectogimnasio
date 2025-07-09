@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->foreignId('sucursal_id')->nullable()->constrained('sucursales')->onDelete('set null'); // Added
+            $table->unsignedBigInteger('sucursal_id')->nullable(); // Modificado: Sin constraint aquí
             $table->boolean('activo')->default(true); // Added
             $table->string('foto_path')->nullable(); // Added
             $table->rememberToken();

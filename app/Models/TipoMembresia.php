@@ -17,10 +17,13 @@ class TipoMembresia extends Model
         'descripcion',
         'duracion_dias',
         'precio',
+        'acceso_multisucursal', // Añadido
     ];
 
     protected $casts = [
         'precio' => 'decimal:2',
+        'duracion_dias' => 'integer',
+        'acceso_multisucursal' => 'boolean', // Añadido
     ];
 
     public function membresias(): HasMany

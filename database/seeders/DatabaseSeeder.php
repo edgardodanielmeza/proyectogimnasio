@@ -29,8 +29,8 @@ class DatabaseSeeder extends Seeder
             [
                 'direccion' => 'Av. Principal 123, Ciudad',
                 'telefono' => '555-1234',
-                'email' => 'central@gimnasio.com', // Email opcional para la sucursal
-                'horario_atencion' => 'L-V 06:00-22:00, S 08:00-20:00', // Horario opcional
+                // 'email' => 'central@gimnasio.com', // Eliminado
+                'horario_atencion' => 'L-V 06:00-22:00, S 08:00-20:00',
             ]
         );
         $this->command->info('Sucursal Central creada/verificada.');
@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
             [
                 'direccion' => 'Calle Falsa 456, Sector Norte',
                 'telefono' => '555-5678',
-                'email' => 'norte@gimnasio.com',
+                // 'email' => 'norte@gimnasio.com', // Eliminado
                 'horario_atencion' => 'L-V 07:00-21:00, S 09:00-18:00',
             ]
         );

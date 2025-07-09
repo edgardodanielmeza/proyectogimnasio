@@ -3,38 +3,28 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use App\Models\Sucursal; // Importar el modelo
+use App\Models\Sucursal;
 use Livewire\WithPagination;
-
-
-
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it (optional)
-
-use Livewire\WithFileUploads;
-use Illuminate\Support\Facades\Storage;
-
-
-
-
-
+use Illuminate\Validation\Rule; // Asegúrate que Rule esté importado
 
 class GestionSucursales extends Component
 {
     use WithPagination;
 
-    public $title = "Gestión de Sucursales";
+    public string $title = "Gestión de Sucursales";
 
     // Propiedades para el formulario
     public $sucursalId;
     public $nombre;
     public $direccion;
     public $telefono;
-    // public $logo_path; // Se podría añadir después si se implementa subida de logo
+    public $horario_atencion; // Nuevo campo
+    // public $logo_path; // Futura implementación
 
-    // Propiedades para controlar modales
     public $mostrandoModalSucursal = false;
-    public $modoEdicionSucursal = false; // Usar un nombre específico para evitar colisiones si se copian modales
+    public $modoEdicionSucursal = false;
+    public $mostrandoModalConfirmacionEliminarSucursal = false;
+    public $sucursalParaEliminarId;
 
     protected $paginationTheme = 'tailwind';
 
@@ -45,11 +35,11 @@ class GestionSucursales extends Component
                 'required',
                 'string',
                 'max:255',
-                \Illuminate\Validation\Rule::unique('sucursales', 'nombre')->ignore($this->sucursalId)
+                Rule::unique('sucursales', 'nombre')->ignore($this->sucursalId)
             ],
             'direccion' => 'required|string|max:255',
             'telefono' => 'nullable|string|max:25',
-            // 'logo_path' => 'nullable|image|max:1024' // Para cuando se implemente el logo
+            'horario_atencion' => 'nullable|string|max:255', // Regla para el nuevo campo
         ];
     }
 
@@ -60,6 +50,7 @@ class GestionSucursales extends Component
             'nombre.unique' => 'Ya existe una sucursal con este nombre.',
             'direccion.required' => 'La dirección es obligatoria.',
             'telefono.max' => 'El teléfono no debe exceder los 25 caracteres.',
+            'horario_atencion.max' => 'El horario de atención no debe exceder los 255 caracteres.',
         ];
     }
 
@@ -68,18 +59,13 @@ class GestionSucursales extends Component
         $this->validateOnly($propertyName);
     }
 
-    public function mount()
-    {
-        // Podríamos inicializar algo aquí si fuera necesario
-    }
-
     private function resetInputFieldsSucursal()
     {
         $this->sucursalId = null;
         $this->nombre = '';
         $this->direccion = '';
         $this->telefono = '';
-        // $this->logo_path = null;
+        $this->horario_atencion = ''; // Resetear nuevo campo
         $this->modoEdicionSucursal = false;
         $this->resetErrorBag();
         $this->resetValidation();
@@ -87,6 +73,7 @@ class GestionSucursales extends Component
 
     public function crearNuevaSucursal()
     {
+        $this->authorize('crear sucursal');
         $this->resetInputFieldsSucursal();
         $this->modoEdicionSucursal = false;
         $this->mostrandoModalSucursal = true;
@@ -95,69 +82,54 @@ class GestionSucursales extends Component
     public function cerrarModalSucursal()
     {
         $this->mostrandoModalSucursal = false;
-        $this->resetInputFieldsSucursal(); // Asegurar que se limpien los campos al cerrar
+        $this->resetInputFieldsSucursal();
     }
 
-    // Métodos para guardar, editar, actualizar, eliminar (se crearán en pasos posteriores)
     public function guardarSucursal()
     {
-        // Asegurarse de que no estamos en modo edición por si acaso
+        $this->authorize('crear sucursal');
         if ($this->modoEdicionSucursal || $this->sucursalId) {
-            // Esto no debería ocurrir si la UI llama al método correcto (actualizarSucursal)
-            // pero es una salvaguarda. Podría redirigir a actualizar o simplemente retornar.
-            // session()->flash('error', 'Error de flujo: Intento de guardar como nuevo durante una edición.');
-            // $this->cerrarModalSucursal();
-            return $this->actualizarSucursal(); // Opcionalmente, redirigir la lógica si hay un ID.
+            return $this->actualizarSucursal();
         }
 
-        // Validar los datos usando las reglas y mensajes definidos en el componente
-        $validatedData = $this->validate(); // Esto usará los métodos rules() y messages()
+        $validatedData = $this->validate();
 
-        // Crear la nueva sucursal
         Sucursal::create([
             'nombre' => $validatedData['nombre'],
             'direccion' => $validatedData['direccion'],
             'telefono' => $validatedData['telefono'],
-            // 'logo_path' => $this->logo_path, // Si se implementa subida de logo
+            'horario_atencion' => $validatedData['horario_atencion'], // Guardar nuevo campo
         ]);
 
-        // Mostrar mensaje de éxito
         session()->flash('message', 'Sucursal creada exitosamente.');
-
-        // Cerrar el modal y resetear los campos del formulario
-        $this->cerrarModalSucursal(); // Este método ya debería llamar a resetInputFieldsSucursal()
+        $this->cerrarModalSucursal();
     }
 
-    public $mostrandoModalConfirmacionEliminarSucursal = false;
-    public $sucursalParaEliminarId;
-
-    public function editarSucursal($id)
+    public function editarSucursal(Sucursal $sucursal) // Route Model Binding
     {
-        $sucursal = Sucursal::findOrFail($id); // Usar findOrFail para manejar el caso de ID no encontrado
+        $this->authorize('editar sucursal');
+        $this->resetInputFieldsSucursal();
 
         $this->sucursalId = $sucursal->id;
         $this->nombre = $sucursal->nombre;
         $this->direccion = $sucursal->direccion;
         $this->telefono = $sucursal->telefono;
-        // $this->logo_path = $sucursal->logo_path; // Para cuando se implemente el logo
+        $this->horario_atencion = $sucursal->horario_atencion; // Cargar nuevo campo
 
         $this->modoEdicionSucursal = true;
         $this->mostrandoModalSucursal = true;
-        $this->resetErrorBag(); // Limpiar errores de validación por si había alguno antes
     }
 
     public function actualizarSucursal()
     {
-        // Asegurarse de que estamos en modo edición y tenemos un ID
+        $this->authorize('editar sucursal');
         if (!$this->modoEdicionSucursal || !$this->sucursalId) {
             session()->flash('error', 'Error al intentar actualizar. Modo o ID incorrecto.');
-            $this->cerrarModalSucursal(); // Cierra el modal y resetea
+            $this->cerrarModalSucursal();
             return;
         }
 
-        // Validar los datos (las reglas ya están configuradas para manejar la unicidad del nombre al editar)
         $validatedData = $this->validate();
-
         $sucursal = Sucursal::find($this->sucursalId);
 
         if ($sucursal) {
@@ -165,20 +137,18 @@ class GestionSucursales extends Component
                 'nombre' => $validatedData['nombre'],
                 'direccion' => $validatedData['direccion'],
                 'telefono' => $validatedData['telefono'],
-                // 'logo_path' => $this->logo_path, // Si se implementa logo y se actualiza
+                'horario_atencion' => $validatedData['horario_atencion'], // Actualizar nuevo campo
             ]);
-
             session()->flash('message', 'Sucursal actualizada exitosamente.');
         } else {
-            // Manejar el caso raro de que el ID no se encuentre después de haberlo cargado
             session()->flash('error', 'No se encontró la sucursal para actualizar.');
         }
-
-        $this->cerrarModalSucursal(); // Este método ya resetea los campos, el modoEdicion y oculta el modal
+        $this->cerrarModalSucursal();
     }
 
     public function confirmarEliminacionSucursal($id)
     {
+        $this->authorize('eliminar sucursal');
         $this->sucursalParaEliminarId = $id;
         $this->mostrandoModalConfirmacionEliminarSucursal = true;
     }
@@ -191,38 +161,20 @@ class GestionSucursales extends Component
 
     public function eliminarSucursal()
     {
+        $this->authorize('eliminar sucursal');
         if ($this->sucursalParaEliminarId) {
             $sucursal = Sucursal::find($this->sucursalParaEliminarId);
-
             if ($sucursal) {
-                // Verificar relaciones antes de eliminar
-                if ($sucursal->miembros()->exists()) {
-                    session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene miembros asociados. Reasigne los miembros primero.');
+                if ($sucursal->miembros()->exists() || $sucursal->dispositivosControlAcceso()->exists() || $sucursal->users()->exists()) {
+                    session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene miembros, dispositivos o usuarios del sistema asociados. Reasígnelos o elimínelos primero.');
                     $this->ocultarModalConfirmacionEliminarSucursal();
                     return;
                 }
-
-                if ($sucursal->dispositivosControlAcceso()->exists()) {
-                    session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene dispositivos de control de acceso asociados.');
-                    $this->ocultarModalConfirmacionEliminarSucursal();
-                    return;
-                }
-
-                if ($sucursal->usuariosSistema()->exists()) {
-                     session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene usuarios del sistema asignados. Reasígnelos primero.');
-                    $this->ocultarModalConfirmacionEliminarSucursal();
-                    return;
-                }
-
                 try {
-                    // Lógica para eliminar logo si existe (se implementará si se añade gestión de logos)
-                    // if ($sucursal->logo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($sucursal->logo_path)) {
-                    //     \Illuminate\Support\Facades\Storage::disk('public')->delete($sucursal->logo_path);
-                    // }
-                    $sucursal->delete(); // Borrado físico
+                    $sucursal->delete();
                     session()->flash('message', 'Sucursal eliminada exitosamente.');
                 } catch (\Illuminate\Database\QueryException $e) {
-                    session()->flash('error', 'No se pudo eliminar la sucursal. Error de base de datos: ' . $e->getMessage());
+                    session()->flash('error', 'No se pudo eliminar la sucursal. Error de base de datos.');
                 }
             } else {
                 session()->flash('error', 'No se encontró la sucursal para eliminar.');
@@ -233,23 +185,10 @@ class GestionSucursales extends Component
 
     public function render()
     {
-        $sucursales = Sucursal::orderBy('nombre') // Ordenar por nombre, por ejemplo
-                               ->paginate(10);    // Paginar, 10 por página
-
-        $sucursales->each(function ($sucursal) {
-            // Agregar una propiedad 'logo' si se desea mostrar el logo
-            $sucursal->logo = $sucursal->logo_path; // Agregar la propiedad 'logo' aquí
-        });
+        $this->authorize('ver lista sucursales');
+        $sucursales = Sucursal::orderBy('nombre')->paginate(10);
         return view('livewire.gestion-sucursales', [
-            'sucursales' => $sucursales, // Pasar las sucursales a la vista
+            'sucursales_list' => $sucursales, // Cambiado para evitar colisión con $this->sucursales
         ])->layout('layouts.app', ['title' => $this->title]);
     }
-
-
-
-
-
-
-
-
 }

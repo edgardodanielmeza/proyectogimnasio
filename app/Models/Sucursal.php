@@ -16,6 +16,7 @@ class Sucursal extends Model
         'nombre',
         'direccion',
         'telefono',
+        'horario_atencion', // Añadido
         'logo_path',
     ];
 
