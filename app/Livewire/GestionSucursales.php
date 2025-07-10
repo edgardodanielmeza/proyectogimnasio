@@ -30,6 +30,7 @@ class GestionSucursales extends Component
     public $nombre;
     public $direccion;
     public $telefono;
+        public $horario_atencion;
     // public $logo_path; // Se podría añadir después si se implementa subida de logo
 
     // Propiedades para controlar modales
@@ -49,6 +50,7 @@ class GestionSucursales extends Component
             ],
             'direccion' => 'required|string|max:255',
             'telefono' => 'nullable|string|max:25',
+            'horario_atencion' => 'required|string|max:255',
             // 'logo_path' => 'nullable|image|max:1024' // Para cuando se implemente el logo
         ];
     }
@@ -60,6 +62,7 @@ class GestionSucursales extends Component
             'nombre.unique' => 'Ya existe una sucursal con este nombre.',
             'direccion.required' => 'La dirección es obligatoria.',
             'telefono.max' => 'El teléfono no debe exceder los 25 caracteres.',
+             'horario_atencion.max' => 'Horario de atencion no debe exceder los 25 caracteres.',
         ];
     }
 
@@ -79,6 +82,7 @@ class GestionSucursales extends Component
         $this->nombre = '';
         $this->direccion = '';
         $this->telefono = '';
+         $this->horario_atencion = '';
         // $this->logo_path = null;
         $this->modoEdicionSucursal = false;
         $this->resetErrorBag();
@@ -118,6 +122,7 @@ class GestionSucursales extends Component
             'nombre' => $validatedData['nombre'],
             'direccion' => $validatedData['direccion'],
             'telefono' => $validatedData['telefono'],
+            'horario_atencion' => $validatedData['horario_atencion'],
             // 'logo_path' => $this->logo_path, // Si se implementa subida de logo
         ]);
 
@@ -139,6 +144,8 @@ class GestionSucursales extends Component
         $this->nombre = $sucursal->nombre;
         $this->direccion = $sucursal->direccion;
         $this->telefono = $sucursal->telefono;
+        $this->horario_atencion = $sucursal->horario_atencion;
+
         // $this->logo_path = $sucursal->logo_path; // Para cuando se implemente el logo
 
         $this->modoEdicionSucursal = true;
@@ -165,6 +172,7 @@ class GestionSucursales extends Component
                 'nombre' => $validatedData['nombre'],
                 'direccion' => $validatedData['direccion'],
                 'telefono' => $validatedData['telefono'],
+               'horario_atencion' => $validatedData['horario_atencion'],
                 // 'logo_path' => $this->logo_path, // Si se implementa logo y se actualiza
             ]);
 

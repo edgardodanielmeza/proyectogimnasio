@@ -17,14 +17,18 @@ class TipoMembresia extends Model
         'descripcion',
         'duracion_dias',
         'precio',
+        'acceso_multisucursal',
     ];
 
-    protected $casts = [
+       protected $casts = [
         'precio' => 'decimal:2',
+        'duracion_dias' => 'integer',
+        'acceso_multisucursal' => 'boolean',
     ];
 
-    public function membresias(): HasMany
+
+       public function membresias(): HasMany
     {
-        return $this->hasMany(Membresia::class);
+        return $this->hasMany(Membresia::class, 'tipo_membresia_id'); // Especificar FK si no sigue convención
     }
 }

@@ -11,8 +11,51 @@
         </ol>
     </nav>
 
-    {{-- Cards de estadísticas --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {{-- Cards de estadísticas --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+       <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
+            <div class="p-2 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-400"> Nuevos Miembros Hoy</h3>
+                <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{{ $nuevosMiembrosHoy }}</p>
+                @if($listaNuevosMiembrosHoy->count() > 0)
+                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <span class="font-semibold">Últimos registrados:</span>
+                        <ul class="list-disc list-inside ml-2">
+                            @foreach($listaNuevosMiembrosHoy as $miembro)
+                                <li>{{ $miembro->nombre }} {{ $miembro->apellido }} ({{ $miembro->email }})</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @else
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No hay nuevos miembros registrados hoy.</p>
+                @endif
+            </div>
+        </div>
+
+
+        {{-- Ingresos Registrados Hoy --}}
+        <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
+            <div class="p-2 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-400">Ingresos Registrados Hoy</h3>
+                <p class="text-3xl font-bold text-green-600 dark:text-green-400">${{ number_format($ingresosHoy, 2) }}</p>
+                @if($ultimosPagosHoy->count() > 0)
+                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <span class="font-semibold">Últimos pagos:</span>
+                        <ul class="list-disc list-inside ml-2">
+                            @foreach($ultimosPagosHoy as $pago)
+                                <li>
+                                    {{ $pago->miembro->nombre ?? 'N/A' }} {{ $pago->miembro->apellido ?? '' }} - 
+                                    ${{ number_format($pago->monto, 2) }} 
+                                    <span class="text-xs">({{ $pago->metodo_pago }})</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @else
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No hay pagos registrados hoy.</p>
+                @endif
+            </div>
+        </div>
         {{-- Miembros Activos --}}
         <div class="bg-white rounded-lg p-3 shadow-sm border border-neutral-100">
             <div class="flex items-center">

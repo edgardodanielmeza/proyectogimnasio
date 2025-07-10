@@ -16,8 +16,13 @@ class Sucursal extends Model
         'nombre',
         'direccion',
         'telefono',
+        'horario_atencion',
         'logo_path',
     ];
+    public function users(): HasMany // Relación con usuarios (si un usuario pertenece a una sucursal)
+    {
+        return $this->hasMany(User::class);
+    }
 
     public function dispositivosControlAcceso(): HasMany
     {

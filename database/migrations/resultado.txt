@@ -1,0 +1,807 @@
+Nombre del archivo: 0001_01_01_000000_create_users_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('apellido')->nullable(); // Asegúrate que sea nullable si no siempre se provee
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->unsignedBigInteger('sucursal_id')->nullable(); // MODIFICADO: Sin constraint aquí
+            $table->boolean('activo')->default(true);
+            $table->string('foto_path')->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('sessions', function (Blueprint $table) {
+             $table->string('id')->primary();
+             $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+             $table->text('user_agent')->nullable();
+             $table->longText('payload');
+             $table->integer('last_activity')->index();
+         });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('sessions'); // Asegúrate de dropear sessions también
+    }
+};
+ 
+Nombre del archivo: 0001_01_01_000001_create_cache_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('cache', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->integer('expiration');
+        });
+
+        Schema::create('cache_locks', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->string('owner');
+            $table->integer('expiration');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('cache');
+        Schema::dropIfExists('cache_locks');
+    }
+};
+ 
+Nombre del archivo: 0001_01_01_000002_create_jobs_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('queue')->index();
+            $table->longText('payload');
+            $table->unsignedTinyInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+        });
+
+        Schema::create('job_batches', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('name');
+            $table->integer('total_jobs');
+            $table->integer('pending_jobs');
+            $table->integer('failed_jobs');
+            $table->longText('failed_job_ids');
+            $table->mediumText('options')->nullable();
+            $table->integer('cancelled_at')->nullable();
+            $table->integer('created_at');
+            $table->integer('finished_at')->nullable();
+        });
+
+        Schema::create('failed_jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('failed_jobs');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154117_create_sucursales_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('sucursales', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre');
+            $table->string('direccion');
+            $table->string('telefono')->nullable();
+            $table->string('horario_atencion')->nullable();
+            $table->string('logo_path')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('sucursales');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154150_create_tipos_membresia_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('tipos_membresia', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre');
+            $table->text('descripcion')->nullable();
+            $table->integer('duracion_dias');
+            $table->decimal('precio', 10, 2);
+            $table->boolean('acceso_multisucursal')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('tipos_membresia');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154214_create_miembros_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('miembros', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre');
+            $table->string('apellido');
+            $table->string('direccion')->nullable();
+            $table->string('telefono')->nullable();
+            $table->string('email')->unique();
+            $table->date('fecha_nacimiento');
+            $table->string('foto_path')->nullable();
+            $table->string('codigo_acceso_numerico')->nullable(); // Should be hashed in the model
+            $table->binary('plantilla_huella')->nullable(); // Consider security and storage implications
+            $table->foreignId('sucursal_id')->nullable()->constrained('sucursales')->onDelete('set null');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('miembros');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154243_create_membresias_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('membresias', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('miembro_id')->constrained('miembros')->onDelete('cascade');
+            $table->foreignId('tipo_membresia_id')->constrained('tipos_membresia')->onDelete('cascade');
+            $table->date('fecha_inicio');
+            $table->date('fecha_fin');
+            $table->string('estado'); // activa, vencida, cancelada, suspendida
+            $table->boolean('renovacion_automatica')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('membresias');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154306_create_dispositivos_control_acceso_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('dispositivos_control_acceso', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('sucursal_id')->constrained('sucursales')->onDelete('cascade');
+            $table->string('nombre'); // ej: "Puerta Principal", "Torno 1"
+            $table->string('tipo'); // teclado_numerico, biometrico_huella, biometrico_facial
+            $table->string('identificador_dispositivo')->unique(); // ID o serial del dispositivo físico
+            $table->string('estado'); // conectado, desconectado, error
+            $table->ipAddress('ip_address')->nullable();
+            $table->integer('puerto')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('dispositivos_control_acceso');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154334_create_eventos_acceso_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('eventos_acceso', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('miembro_id')->nullable()->constrained('miembros')->onDelete('set null'); // Nullable if access is denied and member is not identified
+            $table->foreignId('dispositivo_control_acceso_id')->constrained('dispositivos_control_acceso')->onDelete('cascade');
+            $table->foreignId('sucursal_id')->constrained('sucursales')->onDelete('cascade'); // Denormalized for easier queries
+            $table->dateTime('fecha_hora');
+            $table->string('tipo_acceso_intentado'); // codigo, huella, facial, qr
+            $table->string('resultado'); // permitido, denegado_membresia_inactiva, denegado_codigo_incorrecto, denegado_no_reconocido
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('eventos_acceso');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154406_create_pagos_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('pagos', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('miembro_id')->constrained('miembros')->onDelete('cascade');
+            $table->foreignId('membresia_id')->nullable()->constrained('membresias')->onDelete('set null'); // Nullable if a general payment not tied to a specific renewal
+            $table->decimal('monto', 10, 2);
+            $table->date('fecha_pago');
+            $table->string('metodo_pago'); // efectivo, tarjeta_credito, tarjeta_debito, transferencia
+            $table->string('referencia_pago')->nullable(); // ID de transacción
+            $table->boolean('factura_generada')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('pagos');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154435_create_categorias_producto_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('categorias_producto', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre');
+            $table->text('descripcion')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('categorias_producto');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154502_create_productos_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('productos', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre');
+            $table->text('descripcion')->nullable();
+            $table->decimal('precio_venta', 10, 2);
+            $table->integer('stock_actual')->default(0);
+            $table->foreignId('categoria_producto_id')->nullable()->constrained('categorias_producto')->onDelete('set null');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('productos');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154528_create_ventas_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('ventas', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('miembro_id')->nullable()->constrained('miembros')->onDelete('set null'); // Nullable if venta is to a non-member
+            $table->dateTime('fecha_venta');
+            $table->decimal('total_venta', 10, 2);
+            $table->string('metodo_pago');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('ventas');
+    }
+};
+ 
+Nombre del archivo: 2025_06_03_154554_create_ventas_detalle_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('ventas_detalle', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('venta_id')->constrained('ventas')->onDelete('cascade');
+            $table->foreignId('producto_id')->constrained('productos')->onDelete('cascade'); // Or onDelete('restrict') or onDelete('set null') depending on business logic for when a product is deleted
+            $table->integer('cantidad');
+            $table->decimal('precio_unitario_en_venta', 10, 2); // Price at the time of sale
+            $table->decimal('subtotal', 10, 2);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('ventas_detalle');
+    }
+};
+ 
+Nombre del archivo: 2025_07_02_144409_add_sucursal_foreign_key_to_users_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            if (Schema::hasColumn('users', 'sucursal_id')) {
+                // Asegura que la columna es del tipo correcto antes de añadir la FK
+                // Esto es una precaución, usualmente no es necesario si la migración original la creó como unsignedBigInteger.
+                // $table->unsignedBigInteger('sucursal_id')->nullable()->change();
+
+                $table->foreign('sucursal_id')
+                      ->references('id')
+                      ->on('sucursales')
+                      ->onDelete('set null');
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            if (Schema::hasColumn('users', 'sucursal_id')) {
+                // Intentar obtener el nombre de la FK dinámicamente es complejo y varía por BD.
+                // Laravel por defecto nombra las FKs como: table_column_foreign
+                // Ejemplo: users_sucursal_id_foreign
+                // Si esta forma de dropear no funciona, se puede necesitar el nombre exacto de la constraint.
+                try {
+                    $table->dropForeign(['sucursal_id']);
+                } catch (\Exception $e) {
+                    // Log o manejar el error si la FK no existe o tiene un nombre diferente
+                    // Por ejemplo, si se ejecuta 'down' dos veces.
+                    if (app()->environment('local')) {
+                        logger()->warning('Intento de eliminar FK sucursal_id en users falló o ya no existía: ' . $e->getMessage());
+                    }
+                }
+            }
+        });
+    }
+};
+ 
+Nombre del archivo: 2025_07_02_151458_create_permission_tables.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        $teams = config('permission.teams');
+        $tableNames = config('permission.table_names');
+        $columnNames = config('permission.column_names');
+        $pivotRole = $columnNames['role_pivot_key'] ?? 'role_id';
+        $pivotPermission = $columnNames['permission_pivot_key'] ?? 'permission_id';
+
+        throw_if(empty($tableNames), new Exception('Error: config/permission.php not loaded. Run [php artisan config:clear] and try again.'));
+        throw_if($teams && empty($columnNames['team_foreign_key'] ?? null), new Exception('Error: team_foreign_key on config/permission.php not loaded. Run [php artisan config:clear] and try again.'));
+
+        Schema::create($tableNames['permissions'], static function (Blueprint $table) {
+            // $table->engine('InnoDB');
+            $table->bigIncrements('id'); // permission id
+            $table->string('name');       // For MyISAM use string('name', 225); // (or 166 for InnoDB with Redundant/Compact row format)
+            $table->string('guard_name'); // For MyISAM use string('guard_name', 25);
+            $table->timestamps();
+
+            $table->unique(['name', 'guard_name']);
+        });
+
+        Schema::create($tableNames['roles'], static function (Blueprint $table) use ($teams, $columnNames) {
+            // $table->engine('InnoDB');
+            $table->bigIncrements('id'); // role id
+            if ($teams || config('permission.testing')) { // permission.testing is a fix for sqlite testing
+                $table->unsignedBigInteger($columnNames['team_foreign_key'])->nullable();
+                $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
+            }
+            $table->string('name');       // For MyISAM use string('name', 225); // (or 166 for InnoDB with Redundant/Compact row format)
+            $table->string('guard_name'); // For MyISAM use string('guard_name', 25);
+            $table->timestamps();
+            if ($teams || config('permission.testing')) {
+                $table->unique([$columnNames['team_foreign_key'], 'name', 'guard_name']);
+            } else {
+                $table->unique(['name', 'guard_name']);
+            }
+        });
+
+        Schema::create($tableNames['model_has_permissions'], static function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission, $teams) {
+            $table->unsignedBigInteger($pivotPermission);
+
+            $table->string('model_type');
+            $table->unsignedBigInteger($columnNames['model_morph_key']);
+            $table->index([$columnNames['model_morph_key'], 'model_type'], 'model_has_permissions_model_id_model_type_index');
+
+            $table->foreign($pivotPermission)
+                ->references('id') // permission id
+                ->on($tableNames['permissions'])
+                ->onDelete('cascade');
+            if ($teams) {
+                $table->unsignedBigInteger($columnNames['team_foreign_key']);
+                $table->index($columnNames['team_foreign_key'], 'model_has_permissions_team_foreign_key_index');
+
+                $table->primary([$columnNames['team_foreign_key'], $pivotPermission, $columnNames['model_morph_key'], 'model_type'],
+                    'model_has_permissions_permission_model_type_primary');
+            } else {
+                $table->primary([$pivotPermission, $columnNames['model_morph_key'], 'model_type'],
+                    'model_has_permissions_permission_model_type_primary');
+            }
+
+        });
+
+        Schema::create($tableNames['model_has_roles'], static function (Blueprint $table) use ($tableNames, $columnNames, $pivotRole, $teams) {
+            $table->unsignedBigInteger($pivotRole);
+
+            $table->string('model_type');
+            $table->unsignedBigInteger($columnNames['model_morph_key']);
+            $table->index([$columnNames['model_morph_key'], 'model_type'], 'model_has_roles_model_id_model_type_index');
+
+            $table->foreign($pivotRole)
+                ->references('id') // role id
+                ->on($tableNames['roles'])
+                ->onDelete('cascade');
+            if ($teams) {
+                $table->unsignedBigInteger($columnNames['team_foreign_key']);
+                $table->index($columnNames['team_foreign_key'], 'model_has_roles_team_foreign_key_index');
+
+                $table->primary([$columnNames['team_foreign_key'], $pivotRole, $columnNames['model_morph_key'], 'model_type'],
+                    'model_has_roles_role_model_type_primary');
+            } else {
+                $table->primary([$pivotRole, $columnNames['model_morph_key'], 'model_type'],
+                    'model_has_roles_role_model_type_primary');
+            }
+        });
+
+        Schema::create($tableNames['role_has_permissions'], static function (Blueprint $table) use ($tableNames, $pivotRole, $pivotPermission) {
+            $table->unsignedBigInteger($pivotPermission);
+            $table->unsignedBigInteger($pivotRole);
+
+            $table->foreign($pivotPermission)
+                ->references('id') // permission id
+                ->on($tableNames['permissions'])
+                ->onDelete('cascade');
+
+            $table->foreign($pivotRole)
+                ->references('id') // role id
+                ->on($tableNames['roles'])
+                ->onDelete('cascade');
+
+            $table->primary([$pivotPermission, $pivotRole], 'role_has_permissions_permission_id_role_id_primary');
+        });
+
+        app('cache')
+            ->store(config('permission.cache.store') != 'default' ? config('permission.cache.store') : null)
+            ->forget(config('permission.cache.key'));
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        $tableNames = config('permission.table_names');
+
+        if (empty($tableNames)) {
+            throw new \Exception('Error: config/permission.php not found and defaults could not be merged. Please publish the package configuration before proceeding, or drop the tables manually.');
+        }
+
+        Schema::drop($tableNames['role_has_permissions']);
+        Schema::drop($tableNames['model_has_roles']);
+        Schema::drop($tableNames['model_has_permissions']);
+        Schema::drop($tableNames['roles']);
+        Schema::drop($tableNames['permissions']);
+    }
+};
+ 
+Nombre del archivo: 2025_07_02_153041_modify_dispositivos_control_acceso_table.php 
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('dispositivos_control_acceso', function (Blueprint $table) {
+            // Renombrar columna tipo a tipo_dispositivo
+            // Solo intentar renombrar si 'tipo' existe Y 'tipo_dispositivo' NO existe
+            if (Schema::hasColumn('dispositivos_control_acceso', 'tipo') && !Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo')) {
+                $table->renameColumn('tipo', 'tipo_dispositivo');
+            }
+            // Si 'tipo' no existe pero 'tipo_dispositivo' tampoco, la creamos (escenario poco probable si la migración original corrió)
+            // Aseguramos que se coloque después de 'nombre' si se crea aquí.
+            elseif (!Schema::hasColumn('dispositivos_control_acceso', 'tipo') && !Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo')) {
+                $existing_columns = Schema::getColumnListing('dispositivos_control_acceso');
+                if (in_array('nombre', $existing_columns)) {
+                    $table->string('tipo_dispositivo')->after('nombre')->comment('Ej: teclado_numerico, biometrico_huella');
+                } else {
+                    $table->string('tipo_dispositivo')->comment('Ej: teclado_numerico, biometrico_huella');
+                }
+            }
+
+            // Añadir mac_address si no existe
+            if (!Schema::hasColumn('dispositivos_control_acceso', 'mac_address')) {
+                $existing_columns = Schema::getColumnListing('dispositivos_control_acceso');
+                if (in_array('ip_address', $existing_columns)) {
+                    $table->string('mac_address')->nullable()->unique()->after('ip_address');
+                } else {
+                    $table->string('mac_address')->nullable()->unique();
+                }
+            }
+
+            // Añadir configuracion_adicional si no existe
+            if (!Schema::hasColumn('dispositivos_control_acceso', 'configuracion_adicional')) {
+                 $existing_columns = Schema::getColumnListing('dispositivos_control_acceso');
+                if (in_array('puerto', $existing_columns)) {
+                    $table->json('configuracion_adicional')->nullable()->after('puerto');
+                } else {
+                     $table->json('configuracion_adicional')->nullable();
+                }
+            }
+
+            // Modificar 'estado' para asegurar que sea compatible con los nuevos estados definidos en el modelo.
+            if (Schema::hasColumn('dispositivos_control_acceso', 'estado')) {
+                 $table->string('estado')->comment('Ej: activo, inactivo, error, mantenimiento')->change();
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('dispositivos_control_acceso', function (Blueprint $table) {
+            // Solo intentar renombrar si 'tipo_dispositivo' existe Y 'tipo' NO existe
+            if (Schema::hasColumn('dispositivos_control_acceso', 'tipo_dispositivo') && !Schema::hasColumn('dispositivos_control_acceso', 'tipo')) {
+                $table->renameColumn('tipo_dispositivo', 'tipo');
+            }
+
+            if (Schema::hasColumn('dispositivos_control_acceso', 'mac_address')) {
+                // Para hacer el drop de una columna unique, a veces es necesario primero dropear el índice.
+                // El nombre del índice podría ser: $table->dropUnique('dispositivos_control_acceso_mac_address_unique');
+                // o ['mac_address'] si es el nombre por defecto.
+                // Por seguridad, intentamos dropear el índice explícitamente si existe.
+                // Esto puede variar según la base de datos. En MySQL, dropear la columna usualmente dropea el índice.
+                // Si da problemas, se podría necesitar un if(DB::getDriverName() === 'mysql') y sintaxis específica.
+                // $table->dropUnique(['mac_address']); // Comentado por ahora, Laravel suele manejarlo.
+                $table->dropColumn('mac_address');
+            }
+
+            if (Schema::hasColumn('dispositivos_control_acceso', 'configuracion_adicional')) {
+                $table->dropColumn('configuracion_adicional');
+            }
+
+            if (Schema::hasColumn('dispositivos_control_acceso', 'estado')) {
+                 $table->string('estado')->comment('')->change(); // Remover comentario específico
+            }
+        });
+    }
+};
+ 

@@ -23,10 +23,12 @@ class GestionMembresias extends Component
 
     // Propiedades para el formulario de Miembro
     public $miembroSeleccionadoId = null;
-    public $nombre, $apellido, $email, $telefono, $fecha_nacimiento, $direccion;
+    public $nombre, $apellido, $email, $documento_identidad, $telefono, $fecha_nacimiento, $direccion;
     public $sucursal_id;
     public $foto; // Para la nueva foto subida (Livewire\TemporaryUploadedFile)
     public $foto_actual_path; // Para mostrar la ruta de la foto existente al editar
+    public $codigo_acceso_numerico;
+    public $acceso_habilitado = true; // Default para nuevos registros y para el estado inicial del input
 
     // Propiedades para la membresía inicial (solo en creación)
     public $tipo_membresia_id;
@@ -58,13 +60,18 @@ class GestionMembresias extends Component
     public $membresiaParaCancelarId;
     public $membresiaParaCancelarInfo;
 
+    // Propiedades para el QR Code
+    public $codigoQrGenerado = null;
+    public $miembroConQr = null;
+    public $mostrandoModalQr = false; // Para controlar el modal del QR con Livewire directamente
+
     protected $paginationTheme = 'tailwind';
 
     public function mount()
     {
         $this->sucursales = Sucursal::orderBy('nombre')->get();
         $this->tiposMembresia = TipoMembresia::orderBy('nombre')->get();
-        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->fecha_inicio_membresia = now()->format('d-m-y');
         $this->resetInputFields();
     }
 
@@ -74,22 +81,35 @@ class GestionMembresias extends Component
         if ($this->miembroSeleccionadoId) {
             $emailRule .= ',' . $this->miembroSeleccionadoId;
         }
+        
+        $documentoRule = 'nullable|string|max:50|unique:miembros,documento_identidad';
+        if ($this->miembroSeleccionadoId) {
+            $documentoRule .= ',' . $this->miembroSeleccionadoId;
+        }
+
 
         $rules = [
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
             'email' => $emailRule,
+            'documento_identidad' => $documentoRule,
             'telefono' => 'nullable|string|max:20',
             'fecha_nacimiento' => 'required|date',
             'direccion' => 'nullable|string|max:255',
             'sucursal_id' => 'required|exists:sucursales,id',
             'foto' => 'nullable|image|max:2048',
+            'codigo_acceso_numerico' => 'nullable|string|min:4|max:20', // Validar si se provee uno nuevo
+            'acceso_habilitado' => 'required|boolean',
         ];
 
+        // Reglas específicas para la creación de un nuevo miembro (membresía inicial)
         if (!$this->miembroSeleccionadoId) {
             $rules['tipo_membresia_id'] = 'required|exists:tipos_membresia,id';
             $rules['fecha_inicio_membresia'] = 'required|date';
         }
+        // No añadir tipo_membresia_id ni fecha_inicio_membresia a las reglas de actualización aquí,
+        // ya que la membresía se gestiona por separado después de la creación del miembro.
+        // Si se quisiera permitir editar la membresía *inicial* desde este modal, se necesitaría otra lógica.
 
         return $rules;
     }
@@ -97,6 +117,8 @@ class GestionMembresias extends Component
     protected function messages()
     {
         return [
+             'documento_identidad.unique' => 'Este documento de identidad ya está registrado.', // <<<--- MENSAJE AÑADIDO
+            // ... (otros mensajes existentes)
             'nombre.required' => 'El nombre es obligatorio.',
             'apellido.required' => 'El apellido es obligatorio.',
             'email.required' => 'El email es obligatorio.',
@@ -120,6 +142,10 @@ class GestionMembresias extends Component
         if ($propertyName === 'foto') {
              $this->validateOnly($propertyName, ['foto' => 'nullable|image|max:2048']);
         }
+           // Podrías añadir validación en tiempo real para documento_identidad si lo deseas
+        // if ($propertyName === 'documento_identidad') {
+        //     $this->validateOnly($propertyName);
+        // }
     }
 
     // --- Control de Modales ---
@@ -152,6 +178,7 @@ class GestionMembresias extends Component
         $this->miembroSeleccionadoId = null;
         $this->nombre = '';
         $this->apellido = '';
+        $this->documento_identidad = ''; // <<<--- RESETEAR CAMPO
         $this->email = '';
         $this->telefono = '';
         $this->fecha_nacimiento = '';
@@ -161,6 +188,8 @@ class GestionMembresias extends Component
         $this->fecha_inicio_membresia = now()->format('Y-m-d');
         $this->foto = null;
         $this->foto_actual_path = null;
+        $this->codigo_acceso_numerico = '';
+        $this->acceso_habilitado = true; // Por defecto habilitado para nuevos o al resetear
 
         // Resetear también los campos del sub-modal de gestión de membresías
         $this->miembroParaGestionarMembresias = null;
@@ -191,6 +220,7 @@ class GestionMembresias extends Component
             'nombre' => $validatedData['nombre'],
             'apellido' => $validatedData['apellido'],
             'email' => $validatedData['email'],
+             'documento_identidad' => $validatedData['documento_identidad'], // <<<--- GUARDAR CAMPO
             'telefono' => $validatedData['telefono'],
             'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
             'direccion' => $validatedData['direccion'],
@@ -235,14 +265,18 @@ class GestionMembresias extends Component
         $this->nombre = $miembro->nombre;
         $this->apellido = $miembro->apellido;
         $this->email = $miembro->email;
+        $this->documento_identidad = $miembro->documento_identidad; // <<<--- CARGAR CAMPO
         $this->telefono = $miembro->telefono;
         $this->fecha_nacimiento = $miembro->fecha_nacimiento ? Carbon::parse($miembro->fecha_nacimiento)->format('Y-m-d') : null;
         $this->direccion = $miembro->direccion;
         $this->sucursal_id = $miembro->sucursal_id;
         $this->foto_actual_path = $miembro->foto_path;
         $this->foto = null;
-        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
-        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        // Para edición, no mostrar el código actual (si está hasheado). Dejar en blanco para "no cambiar" o ingresar nuevo.
+        $this->codigo_acceso_numerico = '';
+        $this->acceso_habilitado = (bool) $miembro->acceso_habilitado; // Cargar estado actual
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null; // No se edita membresía aquí
+        $this->fecha_inicio_membresia = now()->format('Y-m-d'); // No se edita membresía aquí
         $this->resetErrorBag();
         $this->mostrandoModalRegistro = true;
     }
@@ -264,17 +298,27 @@ class GestionMembresias extends Component
                 'nombre' => $validatedData['nombre'],
                 'apellido' => $validatedData['apellido'],
                 'email' => $validatedData['email'],
+                'documento_identidad' => $validatedData['documento_identidad'], // <<<--- ACTUALIZAR CAMPO
                 'telefono' => $validatedData['telefono'],
                 'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
                 'direccion' => $validatedData['direccion'],
                 'sucursal_id' => $validatedData['sucursal_id'],
+                'acceso_habilitado' => $validatedData['acceso_habilitado'],
             ];
+
+            if (!empty($validatedData['codigo_acceso_numerico'])) {
+                $updateDataArr['codigo_acceso_numerico'] = Hash::make($validatedData['codigo_acceso_numerico']);
+            }
+            // Si 'codigo_acceso_numerico' está vacío en el formulario, no se incluye en $updateDataArr,
+            // por lo que no se actualizará en la base de datos (se mantiene el valor existente).
+
             if ($this->foto) {
                 if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
                     Storage::disk('public')->delete($miembro->foto_path);
                 }
                 $updateDataArr['foto_path'] = $this->foto->store('fotos_miembros', 'public');
             }
+
             $miembro->update($updateDataArr);
             session()->flash('message', 'Miembro actualizado exitosamente.');
         } else {
@@ -434,6 +478,27 @@ class GestionMembresias extends Component
         $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
     }
 
+    public function generarQrParaMiembro($miembroId)
+    {
+        $miembro = Miembro::find($miembroId);
+        if ($miembro && auth()->user()->can('gestionar_miembros')) { // O un permiso más específico si se crea
+            $this->codigoQrGenerado = $miembro->generarCodigoQrTemporal();
+            $this->miembroConQr = $miembro;
+            $this->mostrandoModalQr = true; // Abrir modal gestionado por Livewire
+            // session()->flash('message', 'Código QR generado para ' . $miembro->nombre . ' ' . $miembro->apellido . '. Válido por 60 minutos.');
+            // Usaremos el modal para mostrar la info, no un flash global.
+        } else {
+            session()->flash('error', 'No se pudo generar el código QR o no tiene permisos.');
+        }
+    }
+
+    public function cerrarModalQr()
+    {
+        $this->mostrandoModalQr = false;
+        $this->codigoQrGenerado = null;
+        $this->miembroConQr = null;
+    }
+
     public function render()
     {
         $miembros = Miembro::with(['sucursal', 'membresiaActivaActual.tipoMembresia', 'ultimaMembresiaGeneral.tipoMembresia'])
@@ -441,7 +506,9 @@ class GestionMembresias extends Component
             $query->where(function ($q) {
                 $q->where('nombre', 'like', '%' . $this->search . '%')
                   ->orWhere('apellido', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%');
+                  ->orWhere('email', 'like', '%' . $this->search . '%')
+                    ->orWhere('documento_identidad', 'like', '%' . $this->search . '%'); // <<<--- AÑADIR BÚSQUEDA POR DOCUMENTO
+
             });
         })
         ->latest()

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nombre');
             $table->string('direccion');
             $table->string('telefono')->nullable();
+            $table->string('horario_atencion')->nullable();
             $table->string('logo_path')->nullable();
             $table->timestamps();
         });

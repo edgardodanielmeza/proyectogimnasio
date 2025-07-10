@@ -18,6 +18,7 @@ class RegistroAccesoManual extends Component
     public $miembroEncontrado;
     public $resultadoBusqueda = null;
     public $mensajeResultado = '';
+    public  $diasRestantes=0;
 
     public $ultimosAccesosManuales = []; // Para la lista opcional
 
@@ -57,7 +58,8 @@ class RegistroAccesoManual extends Component
                             $query->where('nombre', 'like', '%' . $this->terminoBusqueda . '%')
                                   ->orWhere('apellido', 'like', '%' . $this->terminoBusqueda . '%')
                                   ->orWhere('email', 'like', '%' . $this->terminoBusqueda . '%')
-                                  ->orWhere('codigo_acceso_numerico', $this->terminoBusqueda);
+                                  ->orWhere('codigo_acceso_numerico', $this->terminoBusqueda. '%')
+                                  ->orWhere('documento_identidad', $this->terminoBusqueda);
                         })
                         ->first();
 
@@ -68,7 +70,7 @@ class RegistroAccesoManual extends Component
             if ($membresiaRelevante) {
                 $fechaFin = Carbon::parse($membresiaRelevante->fecha_fin);
                 $hoy = Carbon::today();
-
+                $diasRestantes = $hoy->diffInDays($fechaFin);
                 if ($membresiaRelevante->estado == 'activa' && $fechaFin->gte($hoy)) {
                     $this->resultadoBusqueda = 'acceso_permitido';
                     $this->mensajeResultado = 'ACCESO PERMITIDO. Membresía: ' . ($membresiaRelevante->tipoMembresia->nombre ?? 'N/D') . ' (Vence: ' . $fechaFin->format('d/m/Y') . ')';
@@ -109,25 +111,28 @@ class RegistroAccesoManual extends Component
                  }
             }
 
-            $dispositivoManual = DispositivoControlAcceso::firstOrCreate(
-                ['identificador_dispositivo' => 'ACCESO_MANUAL_SISTEMA_' . $sucursalIdUsuario], // Hacerlo único por sucursal
-                [
-                    'nombre' => 'Acceso Manual (Sistema - Sucursal ' . $sucursalIdUsuario . ')',
-                    'tipo' => 'manual_sistema',
-                    'sucursal_id' => $sucursalIdUsuario,
-                    'estado' => 'conectado'
-                ]
-            );
+            // $dispositivoManual = DispositivoControlAcceso::firstOrCreate(
+            //     ['identificador_dispositivo' => 'ACCESO_MANUAL_SISTEMA_' . $sucursalIdUsuario], // Hacerlo único por sucursal
+            //     [
+            //         'nombre' => 'Acceso Manual (Sistema - Sucursal ' . $sucursalIdUsuario . ')',
+            //         'tipo' => 'manual_sistema',
+            //         'sucursal_id' => $sucursalIdUsuario,
+            //         'estado' => 'conectado'
+            //     ]
+            // );s
 
-            EventoAcceso::create([
-                'miembro_id' => $this->miembroEncontrado->id,
-                'dispositivo_control_acceso_id' => $dispositivoManual->id,
-                'sucursal_id' => $sucursalIdUsuario,
-                'fecha_hora' => now(),
-                'tipo_acceso_intentado' => 'manual_recepcion',
-                'resultado' => 'permitido',
-            ]);
-
+           try {
+    EventoAcceso::create([
+        'miembro_id' => $this->miembroEncontrado->id,
+        'sucursal_id' => Auth::user()->sucursal_id,
+        'fecha_hora' => now(),
+        'tipo_acceso_intentado' => 'manual_recepcion',
+        'resultado' => 'permitido',
+    ]);
+    session()->flash('message_acceso', 'Entrada registrada para ' . $this->miembroEncontrado->nombre . ' ' . $this->miembroEncontrado->apellido);
+} catch (\Exception $e) {
+    session()->flash('error_acceso', 'Error al registrar la entrada: ' . $e->getMessage());
+}
             session()->flash('message_acceso', 'Entrada registrada para ' . $this->miembroEncontrado->nombre . ' ' . $this->miembroEncontrado->apellido);
             // $this->cargarUltimosAccesos(); // Opcional
             $this->terminoBusqueda = ''; // Limpiar el término de búsqueda

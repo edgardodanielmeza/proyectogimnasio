@@ -58,6 +58,9 @@
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
                         Teléfono
                     </th>
+                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">
+                        Horario de Atencion
+                    </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider min-w-[120px]">
                         Acciones
                     </th>
@@ -74,6 +77,10 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-neutral-700">{{ $sucursal->telefono ?? 'N/A' }}</div>
+                        </td>
+
+                         <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-neutral-700">{{ $sucursal->horario_atencion ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button wire:click="editarSucursal({{ $sucursal->id }})" class="text-primary hover:text-primary-dark" title="Editar">
@@ -151,6 +158,13 @@
                                                    class="mt-1 block w-full border border-neutral-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                                                    placeholder="Ej: +34 900 123 456">
                                             @error('telefono') <span class="text-danger text-xs">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div>
+                                            <label for="sucursal_telefono" class="block text-sm font-medium text-neutral-700">Horario de Atención</label>
+                                            <input type="text" wire:model.defer="horario_atencion" id="horario_atencion"
+                                                   class="mt-1 block w-full border border-neutral-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                                                   placeholder="Ej: +34 900 123 456">
+                                            @error('horario_atencion') <span class="text-danger text-xs">{{ $message }}</span> @enderror
                                         </div>
                                         {{-- Aquí iría el input para el logo si se implementa --}}
                                 </div>

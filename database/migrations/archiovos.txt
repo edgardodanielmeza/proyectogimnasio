@@ -1,0 +1,34 @@
+ El volumen de la unidad C no tiene etiqueta.
+ El n£mero de serie del volumen es: 9636-D8D3
+
+ Directorio de C:\wamp64\www\gimnasio\database\migrations
+
+19/06/2025  08:17    <DIR>          .
+19/06/2025  08:17    <DIR>          ..
+11/06/2025  13:12             1.992 0001_01_01_000000_create_users_table.php
+10/06/2025  08:51               849 0001_01_01_000001_create_cache_table.php
+10/06/2025  08:51             1.812 0001_01_01_000002_create_jobs_table.php
+10/06/2025  08:51               721 2025_06_03_154117_create_sucursales_table.php
+10/06/2025  08:51               730 2025_06_03_154150_create_tipos_membresia_table.php
+10/06/2025  08:51             1.174 2025_06_03_154214_create_miembros_table.php
+10/06/2025  08:51               964 2025_06_03_154243_create_membresias_table.php
+10/06/2025  08:51             1.108 2025_06_03_154306_create_dispositivos_control_acceso_table.php
+10/06/2025  08:51             1.863 2025_06_03_154334_create_eventos_acceso_table.php
+10/06/2025  08:51             1.124 2025_06_03_154406_create_pagos_table.php
+10/06/2025  08:51               646 2025_06_03_154435_create_categorias_producto_table.php
+10/06/2025  08:51               861 2025_06_03_154502_create_productos_table.php
+10/06/2025  08:51               812 2025_06_03_154528_create_ventas_table.php
+10/06/2025  08:51             1.016 2025_06_03_154554_create_ventas_detalle_table.php
+03/06/2025  13:20               783 2025_06_03_154741_create_permisos_table.php
+03/06/2025  13:20               759 2025_06_03_154813_create_usuario_rol_table.php
+03/06/2025  13:20               768 2025_06_03_154843_create_rol_permiso_table.php
+07/06/2025  20:54               941 2025_06_06_021017_add_acceso_multisucursal_to_tipos_membresia_table.php
+08/06/2025  11:04             1.943 2025_06_08_135937_add_sucursal_id_users_table.php
+10/06/2025  08:51             6.539 2025_06_10_141843_create_permission_tables.php
+10/06/2025  08:51             1.084 2025_06_10_142303_add_control_acceso_fields_to_miembros_table.php
+10/06/2025  08:51             1.053 2025_06_10_142415_create_regla_accesos_table.php
+10/06/2025  08:51               662 2025_06_10_143137_add_acceso_multisucursal_to_tipos_membresia_table.php
+10/06/2025  08:51               780 2025_06_10_143529_add_qr_code_fields_to_miembros_table.php
+19/06/2025  08:17                 0 archiovos.txt
+              25 archivos         30.984 bytes
+               2 dirs  100.629.340.160 bytes libres

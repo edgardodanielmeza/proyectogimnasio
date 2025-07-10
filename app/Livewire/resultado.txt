@@ -1,0 +1,3026 @@
+Nombre del archivo: AsignarRolesUsuario.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+
+class AsignarRolesUsuario extends Component
+{
+    public $searchTermUser = '';
+    public $users = [];
+    public $selectedUserId;
+    public $selectedUser;
+    public $roles = [];
+    public $userRoles = [];
+
+    public function mount()
+    {
+        $this->roles = Role::all();
+    }
+
+    public function updatedSearchTermUser()
+    {
+        $this->searchUsers();
+    }
+
+    public function searchUsers()
+    {
+        if (strlen($this->searchTermUser) < 3) {
+            $this->users = [];
+            return;
+        }
+
+        $this->users = User::where(function ($query) {
+            $query->where('name', 'like', '%'.$this->searchTermUser.'%')
+                  ->orWhere('email', 'like', '%'.$this->searchTermUser.'%')
+                  // Asumiendo que tienes un campo 'apellido' o 'last_name'
+                  // Si no, puedes remover la siguiente línea o ajustarla.
+                  ->orWhere('last_name', 'like', '%'.$this->searchTermUser.'%');
+        })->take(5)->get(); // Limita a 5 resultados para no sobrecargar
+    }
+
+    public function selectUser($userId)
+    {
+        $this->selectedUserId = $userId;
+        $this->selectedUser = User::find($userId);
+        if ($this->selectedUser) {
+            $this->userRoles = $this->selectedUser->getRoleNames()->toArray();
+        } else {
+            $this->userRoles = [];
+        }
+        $this->users = []; // Limpiar la lista de búsqueda
+        $this->searchTermUser = $this->selectedUser ? $this->selectedUser->name : ''; // Mostrar nombre en input
+    }
+
+    public function toggleRole($roleName)
+    {
+        if (!$this->selectedUser) {
+            session()->flash('error', 'Ningún usuario seleccionado.');
+            return;
+        }
+
+        if ($this->selectedUser->hasRole($roleName)) {
+            $this->selectedUser->removeRole($roleName);
+            session()->flash('message', 'Rol revocado correctamente.');
+        } else {
+            $this->selectedUser->assignRole($roleName);
+            session()->flash('message', 'Rol asignado correctamente.');
+        }
+
+        // Actualizar la lista de roles del usuario
+        $this->userRoles = $this->selectedUser->getRoleNames()->toArray();
+    }
+
+    public function render()
+    {
+        return view('livewire.asignar-roles-usuario', [
+            'users_list' => $this->users,
+            'roles_list' => $this->roles,
+            'selected_user_info' => $this->selectedUser,
+            'user_roles_list' => $this->userRoles,
+        ]);
+    }
+}
+ 
+Nombre del archivo: DashboardGeneral.php 
+<?php
+
+namespace App\Livewire; // Corrected namespace
+
+use Livewire\Component;
+
+use App\Models\Miembro;
+use App\Models\Membresia;
+use App\Models\Pago;
+use Carbon\Carbon;
+
+class DashboardGeneral extends Component
+{
+    public string $title = "Panel de Control Principal";
+
+    public $totalMiembrosActivos = 0;
+    public $totalMembresiasPorVencer = 0;
+    public $totalIngresosMesActual = 0; // Opcional
+
+    public function render()
+    {
+        // 1. Total de Miembros Activos
+        $this->totalMiembrosActivos = Miembro::whereHas('membresias', function ($query) {
+            $query->where('estado', 'activa')
+                  ->where('fecha_fin', '>=', Carbon::today()->format('Y-m-d'));
+        })->count();
+
+        // 2. Total de Membresías Próximas a Vencer (ej. en los próximos 7 días)
+        $fechaHoy = Carbon::today();
+        $fechaLimiteVencimiento = Carbon::today()->addDays(7);
+        $this->totalMembresiasPorVencer = Membresia::where('estado', 'activa')
+            ->where('fecha_fin', '>=', $fechaHoy->format('Y-m-d'))
+            ->where('fecha_fin', '<=', $fechaLimiteVencimiento->format('Y-m-d'))
+            ->count();
+
+        // 3. (Opcional) Total de Ingresos del Mes Actual
+        $inicioMes = Carbon::now()->startOfMonth()->format('Y-m-d');
+        $finMes = Carbon::now()->endOfMonth()->format('Y-m-d');
+        $this->totalIngresosMesActual = Pago::whereBetween('fecha_pago', [$inicioMes, $finMes])
+                                            ->sum('monto');
+
+        return view('livewire.dashboard-general')
+            ->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: DispositivoControlAcceso.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class DispositivoControlAcceso extends Model
+{
+    use HasFactory;
+
+    protected $table = 'dispositivos_control_acceso';
+
+    protected $fillable = [
+        'sucursal_id',
+        'nombre',
+        'tipo_dispositivo', // Cambiado de 'tipo'
+        'identificador_dispositivo',
+        'estado',
+        'ip_address',
+        'mac_address', // Añadido
+        'puerto',
+        'configuracion_adicional', // Añadido
+    ];
+
+    protected $casts = [
+        'configuracion_adicional' => 'array', // o 'json'
+        'puerto' => 'integer',
+    ];
+
+    // Constantes para tipos de dispositivo
+    public const TIPO_TECLADO_NUMERICO = 'teclado_numerico';
+    public const TIPO_BIOMETRICO_HUELLA = 'biometrico_huella';
+    public const TIPO_BIOMETRICO_FACIAL = 'biometrico_facial';
+    public const TIPO_QR = 'lector_qr'; // Ejemplo de otro tipo
+
+    public static $tiposDispositivo = [
+        self::TIPO_TECLADO_NUMERICO => 'Teclado Numérico',
+        self::TIPO_BIOMETRICO_HUELLA => 'Biométrico Huella',
+        self::TIPO_BIOMETRICO_FACIAL => 'Biométrico Facial',
+        self::TIPO_QR => 'Lector QR',
+    ];
+
+    // Constantes para estados del dispositivo
+    public const ESTADO_ACTIVO = 'activo'; // En lugar de 'conectado' para más generalidad
+    public const ESTADO_INACTIVO = 'inactivo'; // En lugar de 'desconectado'
+    public const ESTADO_ERROR = 'error';
+    public const ESTADO_MANTENIMIENTO = 'mantenimiento';
+
+    public static $estadosDispositivo = [
+        self::ESTADO_ACTIVO => 'Activo',
+        self::ESTADO_INACTIVO => 'Inactivo',
+        self::ESTADO_ERROR => 'Error',
+        self::ESTADO_MANTENIMIENTO => 'Mantenimiento',
+    ];
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    public function eventosAcceso(): HasMany
+    {
+        return $this->hasMany(EventoAcceso::class);
+    }
+}
+ 
+Nombre del archivo: FacturacionPagos.php 
+<?php
+
+namespace App\Livewire; // Corrected namespace
+
+use Livewire\Component;
+
+use App\Models\Pago;
+use Livewire\WithPagination;
+
+class FacturacionPagos extends Component
+{
+    use WithPagination;
+
+    public string $title = "Facturación y Pagos";
+    public $search = '';
+    protected $paginationTheme = 'tailwind';
+
+    // Propiedades para el modal de nuevo pago (se usarán después)
+    public $mostrandoModalNuevoPago = false;
+    public $miembro_id_pago, $membresia_id_pago, $monto_pago, $metodo_pago, $fecha_pago, $referencia_pago;
+
+    public function render()
+    {
+        $query = Pago::with(['miembro', 'membresia.tipoMembresia'])
+                     ->orderBy('fecha_pago', 'desc')
+                     ->orderBy('created_at', 'desc');
+
+        if (!empty($this->search)) {
+            $query->where(function ($q) {
+                $q->whereHas('miembro', function ($subQuery) {
+                    $subQuery->where('nombre', 'like', '%' . $this->search . '%')
+                             ->orWhere('apellido', 'like', '%' . $this->search . '%')
+                             ->orWhere('email', 'like', '%' . $this->search . '%');
+                })
+                ->orWhere('referencia_pago', 'like', '%' . $this->search . '%')
+                ->orWhere('monto', 'like', '%' . $this->search . '%'); // Búsqueda simple por monto
+            });
+        }
+
+        $pagos = $query->paginate(15); // Mostrar 15 pagos por página
+
+        return view('livewire.facturacion-pagos', [
+            'pagos' => $pagos,
+        ])->layout('layouts.app', ['title' => $this->title]);
+    }
+
+    // Métodos para el Modal (se implementarán después)
+    public function crearNuevoPago()
+    {
+        // $this->resetInputFieldsPago(); // Se creará después
+        $this->mostrandoModalNuevoPago = true;
+    }
+
+    public function cerrarModalNuevoPago()
+    {
+        $this->mostrandoModalNuevoPago = false;
+        // $this->resetInputFieldsPago();
+    }
+
+    public function guardarPago()
+    {
+        // Lógica de guardado
+    }
+
+    // private function resetInputFieldsPago() { /* ... */ }
+}
+ 
+Nombre del archivo: GestionClases.php 
+<?php
+
+namespace App\Livewire; // Corrected namespace
+
+use Livewire\Component;
+
+class GestionClases extends Component
+{
+    public string $title = "Gestión de Clases y Horarios";
+
+    public function render()
+    {
+        return view('livewire.gestion-clases')
+            ->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: GestionDispositivos.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\DispositivoControlAcceso as Dispositivo; // Alias para usar Dispositivo
+use App\Models\Sucursal;
+use Livewire\WithPagination;
+use Illuminate\Validation\Rule;
+
+class GestionDispositivos extends Component
+{
+    use WithPagination;
+
+    public $dispositivoId, $sucursal_id, $nombre, $tipo_dispositivo, $identificador_dispositivo;
+    public $estado, $ip_address, $mac_address, $puerto;
+    public $configuracion_adicional = []; // Se manejará como array en el componente
+
+    public $search = '';
+    public $isOpen = false;
+    protected $paginationTheme = 'tailwind';
+
+    public $todasLasSucursales;
+    public $todosLosTiposDispositivo;
+    public $todosLosEstadosDispositivo;
+
+    // Para campos de configuración adicional dinámicos
+    public $configFields = [];
+
+
+    protected function rules()
+    {
+        return [
+            'sucursal_id' => 'required|exists:sucursales,id',
+            'nombre' => 'required|string|max:255',
+            'tipo_dispositivo' => ['required', Rule::in(array_keys(Dispositivo::$tiposDispositivo))],
+            'identificador_dispositivo' => ['required', 'string', 'max:255', Rule::unique('dispositivos_control_acceso', 'identificador_dispositivo')->ignore($this->dispositivoId)],
+            'estado' => ['required', Rule::in(array_keys(Dispositivo::$estadosDispositivo))],
+            'ip_address' => 'nullable|ip',
+            'mac_address' => ['nullable', 'regex:/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', Rule::unique('dispositivos_control_acceso', 'mac_address')->ignore($this->dispositivoId)],
+            'puerto' => 'nullable|integer|min:1|max:65535',
+            'configuracion_adicional' => 'nullable|array',
+            // Reglas dinámicas para configuracion_adicional podrían ir aquí si es necesario
+            // 'configuracion_adicional.campo_especifico' => 'required_if:tipo_dispositivo,algun_tipo|string',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'mac_address.regex' => 'El formato de la dirección MAC no es válido.',
+            // Añadir más mensajes personalizados si se desea
+        ];
+    }
+
+    public function mount()
+    {
+        $this->todasLasSucursales = Sucursal::pluck('nombre', 'id')->toArray();
+        $this->todosLosTiposDispositivo = Dispositivo::$tiposDispositivo;
+        $this->todosLosEstadosDispositivo = Dispositivo::$estadosDispositivo;
+    }
+
+    public function render()
+    {
+        $this->authorize('gestionar dispositivos acceso'); // Autorización general para ver la lista
+
+        $dispositivos = Dispositivo::with('sucursal')
+            ->where(function($query) {
+                $query->where('nombre', 'like', '%' . $this->search . '%')
+                      ->orWhere('identificador_dispositivo', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('sucursal', function($q) {
+                          $q->where('nombre', 'like', '%' . $this->search . '%');
+                      });
+            })
+            ->paginate(10);
+
+        return view('livewire.gestion-dispositivos', [
+            'dispositivos' => $dispositivos,
+        ]);
+    }
+
+    public function create()
+    {
+        $this->authorize('gestionar dispositivos acceso'); // O un permiso más específico como 'crear dispositivo'
+        $this->resetInputFields();
+        $this->updatedTipoDispositivo($this->tipo_dispositivo); // Para inicializar configFields
+        $this->openModal();
+    }
+
+    public function openModal()
+    {
+        $this->isOpen = true;
+    }
+
+    public function closeModal()
+    {
+        $this->isOpen = false;
+        $this->resetErrorBag();
+    }
+
+    private function resetInputFields()
+    {
+        $this->dispositivoId = null;
+        $this->sucursal_id = null;
+        $this->nombre = '';
+        $this->tipo_dispositivo = array_key_first(Dispositivo::$tiposDispositivo) ?? null; // Default al primer tipo
+        $this->identificador_dispositivo = '';
+        $this->estado = Dispositivo::ESTADO_ACTIVO; // Default a activo
+        $this->ip_address = null;
+        $this->mac_address = null;
+        $this->puerto = null;
+        $this->configuracion_adicional = [];
+        $this->configFields = [];
+        $this->resetErrorBag();
+    }
+
+    public function store()
+    {
+        $this->authorize('gestionar dispositivos acceso'); // O 'crear dispositivo' / 'editar dispositivo'
+        $validatedData = $this->validate();
+
+        // Combinar configuracion_adicional de los campos dinámicos
+        $configAdicionalParaGuardar = [];
+        foreach ($this->configFields as $field) {
+            if (isset($this->configuracion_adicional[$field['name']])) {
+                $configAdicionalParaGuardar[$field['name']] = $this->configuracion_adicional[$field['name']];
+            }
+        }
+        $validatedData['configuracion_adicional'] = $configAdicionalParaGuardar;
+
+
+        Dispositivo::updateOrCreate(['id' => $this->dispositivoId], $validatedData);
+
+        session()->flash('message',
+            $this->dispositivoId ? 'Dispositivo actualizado exitosamente.' : 'Dispositivo creado exitosamente.');
+
+        $this->closeModal();
+        $this->resetInputFields();
+    }
+
+    public function edit($id)
+    {
+        $this->authorize('gestionar dispositivos acceso'); // O 'editar dispositivo'
+        $dispositivo = Dispositivo::findOrFail($id);
+        $this->dispositivoId = $id;
+        $this->sucursal_id = $dispositivo->sucursal_id;
+        $this->nombre = $dispositivo->nombre;
+        $this->tipo_dispositivo = $dispositivo->tipo_dispositivo;
+        $this->identificador_dispositivo = $dispositivo->identificador_dispositivo;
+        $this->estado = $dispositivo->estado;
+        $this->ip_address = $dispositivo->ip_address;
+        $this->mac_address = $dispositivo->mac_address;
+        $this->puerto = $dispositivo->puerto;
+        $this->configuracion_adicional = $dispositivo->configuracion_adicional ?? [];
+
+        $this->updatedTipoDispositivo($this->tipo_dispositivo); // Para cargar configFields con valores
+        $this->openModal();
+    }
+
+    public function delete($id)
+    {
+        $this->authorize('gestionar dispositivos acceso'); // O 'eliminar dispositivo'
+        $dispositivo = Dispositivo::findOrFail($id);
+
+        // Validar si tiene eventos de acceso asociados, si es necesario
+        if ($dispositivo->eventosAcceso()->count() > 0) {
+             session()->flash('error', 'Este dispositivo tiene eventos de acceso registrados y no puede ser eliminado. Considere marcarlo como inactivo.');
+             return;
+        }
+
+        $dispositivo->delete();
+        session()->flash('message', 'Dispositivo eliminado exitosamente.');
+    }
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    // Método para manejar campos dinámicos según el tipo de dispositivo
+    public function updatedTipoDispositivo($value)
+    {
+        $this->configFields = [];
+        $currentConfig = $this->configuracion_adicional ?? [];
+        $this->configuracion_adicional = []; // Resetear para evitar llevar datos de otros tipos
+
+        switch ($value) {
+            case Dispositivo::TIPO_TECLADO_NUMERICO:
+                $this->configFields = [
+                    // ['name' => 'longitud_codigo', 'label' => 'Longitud del Código', 'type' => 'number', 'value' => $currentConfig['longitud_codigo'] ?? 6],
+                ];
+                break;
+            case Dispositivo::TIPO_BIOMETRICO_HUELLA:
+                $this->configFields = [
+                    // ['name' => 'sensibilidad_sensor', 'label' => 'Sensibilidad del Sensor (1-5)', 'type' => 'number', 'value' => $currentConfig['sensibilidad_sensor'] ?? 3],
+                    // ['name' => 'api_endpoint', 'label' => 'API Endpoint (si aplica)', 'type' => 'text', 'value' => $currentConfig['api_endpoint'] ?? ''],
+                ];
+                break;
+            // Añadir más casos para otros tipos de dispositivos
+        }
+        // Llenar los valores actuales si existen
+        foreach ($this->configFields as $key => $field) {
+            if (isset($currentConfig[$field['name']])) {
+                $this->configuracion_adicional[$field['name']] = $currentConfig[$field['name']];
+                 $this->configFields[$key]['value'] = $currentConfig[$field['name']]; // Para el input
+            } else {
+                 // Asegurarse de que el modelo tenga un valor por defecto si no hay nada en currentConfig
+                 $this->configuracion_adicional[$field['name']] = $field['value'] ?? null;
+            }
+        }
+    }
+}
+ 
+Nombre del archivo: GestionMembresias.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\Miembro;
+use App\Models\Membresia;
+use App\Models\Sucursal;
+use App\Models\TipoMembresia;
+use App\Models\Pago;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it (optional)
+use Illuminate\Validation\Rule; // For more complex validation rules if needed
+use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
+
+class GestionMembresias extends Component
+{
+    use WithPagination, WithFileUploads;
+
+    public string $title = "Gestión de Miembros y Membresías";
+
+    // Propiedades para el formulario de Miembro
+    public $miembroSeleccionadoId = null;
+    public $nombre, $apellido, $email, $telefono, $fecha_nacimiento, $direccion;
+    public $sucursal_id;
+    public $foto; // Para la nueva foto subida (Livewire\TemporaryUploadedFile)
+    public $foto_actual_path; // Para mostrar la ruta de la foto existente al editar
+    public $codigo_acceso_numerico;
+    public $acceso_habilitado = true; // Default para nuevos registros y para el estado inicial del input
+
+    // Propiedades para la membresía inicial (solo en creación)
+    public $tipo_membresia_id;
+    public $fecha_inicio_membresia;
+
+    // Control de Modales
+    public $mostrandoModalRegistro = false;
+    public $mostrandoModalConfirmacionEliminar = false;
+    public $miembroParaEliminarId;
+
+    // Datos para selectores de formulario
+    public $sucursales;
+    public $tiposMembresia;
+
+    // Búsqueda y Filtros
+    public $search = '';
+
+    // Propiedades para el modal de gestión de membresías del miembro
+    public $mostrandoModalGestionMembresiasMiembro = false;
+    public $miembroParaGestionarMembresias;
+    public $historialMembresias = [];
+
+    // Propiedades para el mini-formulario de añadir nueva membresía
+    public $nuevaMembresia_tipo_id;
+    public $nuevaMembresia_fecha_inicio;
+
+    // Propiedades para el modal de confirmación de cancelación de membresía
+    public $mostrandoModalConfirmacionCancelarMembresia = false;
+    public $membresiaParaCancelarId;
+    public $membresiaParaCancelarInfo;
+
+    // Propiedades para el QR Code
+    public $codigoQrGenerado = null;
+    public $miembroConQr = null;
+    public $mostrandoModalQr = false; // Para controlar el modal del QR con Livewire directamente
+
+    protected $paginationTheme = 'tailwind';
+
+    public function mount()
+    {
+        $this->sucursales = Sucursal::orderBy('nombre')->get();
+        $this->tiposMembresia = TipoMembresia::orderBy('nombre')->get();
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->resetInputFields();
+    }
+
+    protected function rules()
+    {
+        $emailRule = 'required|email|unique:miembros,email';
+        if ($this->miembroSeleccionadoId) {
+            $emailRule .= ',' . $this->miembroSeleccionadoId;
+        }
+
+        $rules = [
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
+            'email' => $emailRule,
+            'telefono' => 'nullable|string|max:20',
+            'fecha_nacimiento' => 'required|date',
+            'direccion' => 'nullable|string|max:255',
+            'sucursal_id' => 'required|exists:sucursales,id',
+            'foto' => 'nullable|image|max:2048',
+            'codigo_acceso_numerico' => 'nullable|string|min:4|max:20', // Validar si se provee uno nuevo
+            'acceso_habilitado' => 'required|boolean',
+        ];
+
+        // Reglas específicas para la creación de un nuevo miembro (membresía inicial)
+        if (!$this->miembroSeleccionadoId) {
+            $rules['tipo_membresia_id'] = 'required|exists:tipos_membresia,id';
+            $rules['fecha_inicio_membresia'] = 'required|date';
+        }
+        // No añadir tipo_membresia_id ni fecha_inicio_membresia a las reglas de actualización aquí,
+        // ya que la membresía se gestiona por separado después de la creación del miembro.
+        // Si se quisiera permitir editar la membresía *inicial* desde este modal, se necesitaría otra lógica.
+
+        return $rules;
+    }
+
+    protected function messages()
+    {
+        return [
+            'nombre.required' => 'El nombre es obligatorio.',
+            'apellido.required' => 'El apellido es obligatorio.',
+            'email.required' => 'El email es obligatorio.',
+            'email.email' => 'El email debe ser una dirección válida.',
+            'email.unique' => 'Este email ya está registrado.',
+            'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
+            'sucursal_id.required' => 'Debe seleccionar una sucursal.',
+            'foto.image' => 'El archivo debe ser una imagen.',
+            'foto.max' => 'La foto no debe exceder los 2MB.',
+            'tipo_membresia_id.required' => 'Debe seleccionar un tipo de membresía para el nuevo miembro.',
+            'fecha_inicio_membresia.required' => 'La fecha de inicio de la membresía es obligatoria para el nuevo miembro.',
+            'nuevaMembresia_tipo_id.required' => 'Debe seleccionar un tipo para la nueva membresía.',
+            'nuevaMembresia_tipo_id.exists' => 'El tipo de membresía seleccionado no es válido.',
+            'nuevaMembresia_fecha_inicio.required' => 'La fecha de inicio es obligatoria para la nueva membresía.',
+            'nuevaMembresia_fecha_inicio.date' => 'La fecha de inicio para la nueva membresía no es válida.',
+        ];
+    }
+
+    public function updated($propertyName)
+    {
+        if ($propertyName === 'foto') {
+             $this->validateOnly($propertyName, ['foto' => 'nullable|image|max:2048']);
+        }
+    }
+
+    // --- Control de Modales ---
+    public function mostrarModalRegistroMiembro()
+    {
+        $this->resetInputFields();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function ocultarModalRegistroMiembro()
+    {
+        $this->mostrandoModalRegistro = false;
+        $this->resetInputFields();
+    }
+
+    public function confirmarEliminacionMiembro($id)
+    {
+        $this->miembroParaEliminarId = $id;
+        $this->mostrandoModalConfirmacionEliminar = true;
+    }
+
+    public function ocultarModalConfirmacionEliminar()
+    {
+        $this->mostrandoModalConfirmacionEliminar = false;
+        $this->miembroParaEliminarId = null;
+    }
+
+    private function resetInputFields()
+    {
+        $this->miembroSeleccionadoId = null;
+        $this->nombre = '';
+        $this->apellido = '';
+        $this->email = '';
+        $this->telefono = '';
+        $this->fecha_nacimiento = '';
+        $this->direccion = '';
+        $this->sucursal_id = $this->sucursales->first()->id ?? null;
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->foto = null;
+        $this->foto_actual_path = null;
+        $this->codigo_acceso_numerico = '';
+        $this->acceso_habilitado = true; // Por defecto habilitado para nuevos o al resetear
+
+        // Resetear también los campos del sub-modal de gestión de membresías
+        $this->miembroParaGestionarMembresias = null;
+        $this->historialMembresias = [];
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+
+        // Resetear campos del modal de cancelación
+        $this->membresiaParaCancelarId = null;
+        $this->membresiaParaCancelarInfo = null;
+
+        $this->resetErrorBag();
+        $this->resetValidation();
+    }
+
+    // --- Operaciones CRUD Miembro ---
+    public function guardarMiembro()
+    {
+        if ($this->miembroSeleccionadoId) {
+            return $this->actualizarMiembro();
+        }
+        $validatedData = $this->validate();
+        $rutaFoto = null;
+        if ($this->foto) {
+            $rutaFoto = $this->foto->store('fotos_miembros', 'public');
+        }
+        $miembro = Miembro::create([
+            'nombre' => $validatedData['nombre'],
+            'apellido' => $validatedData['apellido'],
+            'email' => $validatedData['email'],
+            'telefono' => $validatedData['telefono'],
+            'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+            'direccion' => $validatedData['direccion'],
+            'sucursal_id' => $validatedData['sucursal_id'],
+            'codigo_acceso_numerico' => (string) rand(100000, 999999),
+            'foto_path' => $rutaFoto,
+        ]);
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['tipo_membresia_id']);
+        if ($tipoMembresiaSeleccionado) {
+            $fechaFin = Carbon::parse($validatedData['fecha_inicio_membresia'])
+                                ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                                ->format('Y-m-d');
+            $membresiaCreada = $miembro->membresias()->create([ // Guardar la membresía creada en una variable
+                'tipo_membresia_id' => $validatedData['tipo_membresia_id'],
+                'fecha_inicio' => $validatedData['fecha_inicio_membresia'],
+                'fecha_fin' => $fechaFin,
+                'estado' => 'activa',
+            ]);
+
+            // ---> INICIO DE NUEVA LÓGICA PARA EL PAGO <---
+            if ($membresiaCreada) { // Asegurarse que la membresía se creó
+                Pago::create([
+                    'miembro_id' => $miembro->id,
+                    'membresia_id' => $membresiaCreada->id,
+                    'monto' => $tipoMembresiaSeleccionado->precio, // Usar el precio del tipo de membresía
+                    'fecha_pago' => now()->format('Y-m-d'), // Asumir pago inmediato
+                    'metodo_pago' => 'Inscripción Inicial', // O un valor por defecto como 'Sistema' o 'Efectivo'
+                    'referencia_pago' => 'Pago inicial: ' . $tipoMembresiaSeleccionado->nombre,
+                    'factura_generada' => false,
+                ]);
+            }
+            // ---> FIN DE NUEVA LÓGICA PARA EL PAGO <---
+        }
+        session()->flash('message', 'Miembro, membresía y pago inicial registrados exitosamente.');
+        $this->ocultarModalRegistroMiembro();
+    }
+
+    public function editarMiembro($id)
+    {
+        $miembro = Miembro::findOrFail($id);
+        $this->miembroSeleccionadoId = $miembro->id;
+        $this->nombre = $miembro->nombre;
+        $this->apellido = $miembro->apellido;
+        $this->email = $miembro->email;
+        $this->telefono = $miembro->telefono;
+        $this->fecha_nacimiento = $miembro->fecha_nacimiento ? Carbon::parse($miembro->fecha_nacimiento)->format('Y-m-d') : null;
+        $this->direccion = $miembro->direccion;
+        $this->sucursal_id = $miembro->sucursal_id;
+        $this->foto_actual_path = $miembro->foto_path;
+        $this->foto = null;
+        // Para edición, no mostrar el código actual (si está hasheado). Dejar en blanco para "no cambiar" o ingresar nuevo.
+        $this->codigo_acceso_numerico = '';
+        $this->acceso_habilitado = (bool) $miembro->acceso_habilitado; // Cargar estado actual
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null; // No se edita membresía aquí
+        $this->fecha_inicio_membresia = now()->format('Y-m-d'); // No se edita membresía aquí
+        $this->resetErrorBag();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function actualizarMiembro()
+    {
+        if (!$this->miembroSeleccionadoId) {
+            session()->flash('error', 'Error al actualizar: No hay miembro seleccionado.');
+            $this->ocultarModalRegistroMiembro();
+            return;
+        }
+        $updateRules = $this->rules();
+        unset($updateRules['tipo_membresia_id']);
+        unset($updateRules['fecha_inicio_membresia']);
+        $validatedData = $this->validate($updateRules);
+        $miembro = Miembro::find($this->miembroSeleccionadoId);
+        if ($miembro) {
+            $updateDataArr = [
+                'nombre' => $validatedData['nombre'],
+                'apellido' => $validatedData['apellido'],
+                'email' => $validatedData['email'],
+                'telefono' => $validatedData['telefono'],
+                'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+                'direccion' => $validatedData['direccion'],
+                'sucursal_id' => $validatedData['sucursal_id'],
+                'acceso_habilitado' => $validatedData['acceso_habilitado'],
+            ];
+
+            if (!empty($validatedData['codigo_acceso_numerico'])) {
+                $updateDataArr['codigo_acceso_numerico'] = Hash::make($validatedData['codigo_acceso_numerico']);
+            }
+            // Si 'codigo_acceso_numerico' está vacío en el formulario, no se incluye en $updateDataArr,
+            // por lo que no se actualizará en la base de datos (se mantiene el valor existente).
+
+            if ($this->foto) {
+                if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
+                    Storage::disk('public')->delete($miembro->foto_path);
+                }
+                $updateDataArr['foto_path'] = $this->foto->store('fotos_miembros', 'public');
+            }
+
+            $miembro->update($updateDataArr);
+            session()->flash('message', 'Miembro actualizado exitosamente.');
+        } else {
+            session()->flash('error', 'No se encontró el miembro para actualizar.');
+        }
+        $this->ocultarModalRegistroMiembro();
+    }
+
+    public function eliminarMiembro()
+    {
+        if ($this->miembroParaEliminarId) {
+            $miembro = Miembro::find($this->miembroParaEliminarId);
+            if ($miembro) {
+                try {
+                    if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
+                        Storage::disk('public')->delete($miembro->foto_path);
+                    }
+                    $miembro->delete();
+                    session()->flash('message', 'Miembro eliminado exitosamente.');
+                } catch (\Illuminate\Database\QueryException $e) {
+                    session()->flash('error', 'No se pudo eliminar el miembro. Puede tener datos asociados que impiden su eliminación directa.');
+                } catch (\Exception $e) {
+                    session()->flash('error', 'Ocurrió un error al intentar eliminar el miembro: ' . $e->getMessage());
+                }
+            } else {
+                session()->flash('error', 'No se encontró el miembro para eliminar.');
+            }
+            $this->ocultarModalConfirmacionEliminar();
+        }
+    }
+
+    // --- Modal de Gestión de Membresías del Miembro ---
+    public function abrirModalGestionMembresias($miembroId)
+    {
+        $this->miembroParaGestionarMembresias = Miembro::find($miembroId);
+        if (!$this->miembroParaGestionarMembresias) {
+            session()->flash('error', 'No se encontró el miembro.');
+            return;
+        }
+        $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                        ->with('tipoMembresia')
+                                        ->orderBy('fecha_inicio', 'desc')
+                                        ->get();
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+        $this->mostrandoModalGestionMembresiasMiembro = true;
+    }
+
+    public function cerrarModalGestionMembresias()
+    {
+        $this->mostrandoModalGestionMembresiasMiembro = false;
+        $this->miembroParaGestionarMembresias = null;
+        $this->historialMembresias = [];
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+    }
+
+    // --- Acciones dentro del Modal de Gestión de Membresías ---
+    public function confirmarCancelacionMembresia($membresiaId)
+    {
+        $membresia = Membresia::with('tipoMembresia')->find($membresiaId);
+        if ($membresia && $membresia->estado == 'activa' && Carbon::parse($membresia->fecha_fin)->gte(Carbon::today())) {
+            $this->membresiaParaCancelarId = $membresia->id;
+            $this->membresiaParaCancelarInfo = ($membresia->tipoMembresia->nombre ?? 'N/A') . " (Fin: " . Carbon::parse($membresia->fecha_fin)->format('d/m/Y') . ")";
+            $this->mostrandoModalConfirmacionCancelarMembresia = true;
+        } else {
+            session()->flash('error_modal_gestion', 'Esta membresía no se puede cancelar o ya no está activa.');
+        }
+    }
+
+    public function ocultarModalConfirmacionCancelarMembresia()
+    {
+        $this->mostrandoModalConfirmacionCancelarMembresia = false;
+        $this->membresiaParaCancelarId = null;
+        $this->membresiaParaCancelarInfo = null;
+    }
+
+    public function ejecutarCancelacionMembresia()
+    {
+        if (!$this->membresiaParaCancelarId) {
+            session()->flash('error_modal_gestion', 'No hay membresía seleccionada para cancelar.');
+            $this->ocultarModalConfirmacionCancelarMembresia();
+            return;
+        }
+        $membresia = Membresia::find($this->membresiaParaCancelarId);
+        if ($membresia && $membresia->estado == 'activa' && Carbon::parse($membresia->fecha_fin)->gte(Carbon::today())) {
+            $membresia->estado = 'cancelada';
+            $membresia->save();
+            if ($this->miembroParaGestionarMembresias) {
+                $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                                ->with('tipoMembresia')
+                                                ->orderBy('fecha_inicio', 'desc')
+                                                ->get();
+            }
+            session()->flash('message_modal_gestion', 'La membresía ha sido cancelada.');
+        } else {
+            session()->flash('error_modal_gestion', 'No se pudo cancelar la membresía o ya no estaba activa.');
+        }
+        $this->ocultarModalConfirmacionCancelarMembresia();
+    }
+
+    public function prepararRenovacionMembresia($membresiaId)
+    {
+        $membresiaAnterior = Membresia::find($membresiaId);
+        if (!$membresiaAnterior) {
+            session()->flash('error_modal_gestion', 'No se encontró la membresía original para renovar.');
+            $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+            $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+            $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+            return;
+        }
+        $this->nuevaMembresia_tipo_id = $membresiaAnterior->tipo_membresia_id;
+        $fechaFinAnterior = Carbon::parse($membresiaAnterior->fecha_fin);
+        $hoy = Carbon::today();
+        if ($fechaFinAnterior->gte($hoy)) {
+            $this->nuevaMembresia_fecha_inicio = $fechaFinAnterior->addDay()->format('Y-m-d');
+        } else {
+            $this->nuevaMembresia_fecha_inicio = $hoy->format('Y-m-d');
+        }
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+        session()->flash('info_modal_gestion', 'Datos de renovación cargados en el formulario "Añadir Nueva Membresía". Por favor, verifique y presione "Añadir Nueva Membresía" para confirmar.');
+    }
+
+    public function guardarNuevaMembresiaParaMiembro()
+    {
+        if (!$this->miembroParaGestionarMembresias) {
+            session()->flash('error_modal_gestion', 'No hay un miembro seleccionado para añadir la membresía.');
+            return;
+        }
+        $validatedData = $this->validate([
+            'nuevaMembresia_tipo_id' => 'required|exists:tipos_membresia,id',
+            'nuevaMembresia_fecha_inicio' => 'required|date',
+        ]);
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['nuevaMembresia_tipo_id']);
+        if (!$tipoMembresiaSeleccionado) {
+            session()->flash('error_modal_gestion', 'Tipo de membresía no encontrado.');
+            return;
+        }
+        $fechaFin = Carbon::parse($validatedData['nuevaMembresia_fecha_inicio'])
+                        ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                        ->format('Y-m-d');
+        $this->miembroParaGestionarMembresias->membresias()->create([
+            'tipo_membresia_id' => $validatedData['nuevaMembresia_tipo_id'],
+            'fecha_inicio' => $validatedData['nuevaMembresia_fecha_inicio'],
+            'fecha_fin' => $fechaFin,
+            'estado' => 'activa',
+        ]);
+        session()->flash('message_modal_gestion', 'Nueva membresía añadida exitosamente al miembro.');
+        $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                        ->with('tipoMembresia')
+                                        ->orderBy('fecha_inicio', 'desc')
+                                        ->get();
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+    }
+
+    public function generarQrParaMiembro($miembroId)
+    {
+        $miembro = Miembro::find($miembroId);
+        if ($miembro && auth()->user()->can('gestionar_miembros')) { // O un permiso más específico si se crea
+            $this->codigoQrGenerado = $miembro->generarCodigoQrTemporal();
+            $this->miembroConQr = $miembro;
+            $this->mostrandoModalQr = true; // Abrir modal gestionado por Livewire
+            // session()->flash('message', 'Código QR generado para ' . $miembro->nombre . ' ' . $miembro->apellido . '. Válido por 60 minutos.');
+            // Usaremos el modal para mostrar la info, no un flash global.
+        } else {
+            session()->flash('error', 'No se pudo generar el código QR o no tiene permisos.');
+        }
+    }
+
+    public function cerrarModalQr()
+    {
+        $this->mostrandoModalQr = false;
+        $this->codigoQrGenerado = null;
+        $this->miembroConQr = null;
+    }
+
+    public function render()
+    {
+        $miembros = Miembro::with(['sucursal', 'membresiaActivaActual.tipoMembresia', 'ultimaMembresiaGeneral.tipoMembresia'])
+        ->when($this->search, function ($query) {
+            $query->where(function ($q) {
+                $q->where('nombre', 'like', '%' . $this->search . '%')
+                  ->orWhere('apellido', 'like', '%' . $this->search . '%')
+                  ->orWhere('email', 'like', '%' . $this->search . '%');
+            });
+        })
+        ->latest()
+        ->paginate(10);
+
+        return view('livewire.gestion-membresias', [
+            'miembros' => $miembros,
+        ])->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: GestionMembresias06062025.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\Miembro;
+use App\Models\Membresia;
+use App\Models\Sucursal;
+use App\Models\TipoMembresia;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it (optional)
+use Illuminate\Validation\Rule; // For more complex validation rules if needed
+use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
+
+class GestionMembresias extends Component
+{
+    use WithPagination, WithFileUploads;
+
+    public string $title = "Gestión de Miembros y Membresías";
+
+    // Propiedades para el formulario de Miembro
+    public $miembroSeleccionadoId = null;
+    public $nombre, $apellido, $email, $telefono, $fecha_nacimiento, $direccion;
+    public $sucursal_id;
+    public $foto; // Para la nueva foto subida (Livewire\TemporaryUploadedFile)
+    public $foto_actual_path; // Para mostrar la ruta de la foto existente al editar
+
+    // Propiedades para la membresía inicial (solo en creación)
+    public $tipo_membresia_id;
+    public $fecha_inicio_membresia;
+
+    // Control de Modales
+    public $mostrandoModalRegistro = false;
+    public $mostrandoModalConfirmacionEliminar = false;
+    public $miembroParaEliminarId;
+
+    // Datos para selectores de formulario
+    public $sucursales;
+    public $tiposMembresia;
+
+    // Búsqueda y Filtros
+    public $search = '';
+
+    // Propiedades para el modal de gestión de membresías del miembro
+    public $mostrandoModalGestionMembresiasMiembro = false;
+    public $miembroParaGestionarMembresias;
+    public $historialMembresias = [];
+
+    // Propiedades para el mini-formulario de añadir nueva membresía
+    public $nuevaMembresia_tipo_id;
+    public $nuevaMembresia_fecha_inicio;
+
+    // Propiedades para el modal de confirmación de cancelación de membresía
+    public $mostrandoModalConfirmacionCancelarMembresia = false;
+    public $membresiaParaCancelarId;
+    public $membresiaParaCancelarInfo;
+
+    protected $paginationTheme = 'tailwind';
+
+    public function mount()
+    {
+        $this->sucursales = Sucursal::orderBy('nombre')->get();
+        $this->tiposMembresia = TipoMembresia::orderBy('nombre')->get();
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->resetInputFields();
+    }
+
+    protected function rules()
+    {
+        $emailRule = 'required|email|unique:miembros,email';
+        if ($this->miembroSeleccionadoId) {
+            $emailRule .= ',' . $this->miembroSeleccionadoId;
+        }
+
+        $rules = [
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
+            'email' => $emailRule,
+            'telefono' => 'nullable|string|max:20',
+            'fecha_nacimiento' => 'required|date',
+            'direccion' => 'nullable|string|max:255',
+            'sucursal_id' => 'required|exists:sucursales,id',
+            'foto' => 'nullable|image|max:2048',
+        ];
+
+        if (!$this->miembroSeleccionadoId) {
+            $rules['tipo_membresia_id'] = 'required|exists:tipos_membresia,id';
+            $rules['fecha_inicio_membresia'] = 'required|date';
+        }
+
+        return $rules;
+    }
+
+    protected function messages()
+    {
+        return [
+            'nombre.required' => 'El nombre es obligatorio.',
+            'apellido.required' => 'El apellido es obligatorio.',
+            'email.required' => 'El email es obligatorio.',
+            'email.email' => 'El email debe ser una dirección válida.',
+            'email.unique' => 'Este email ya está registrado.',
+            'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
+            'sucursal_id.required' => 'Debe seleccionar una sucursal.',
+            'foto.image' => 'El archivo debe ser una imagen.',
+            'foto.max' => 'La foto no debe exceder los 2MB.',
+            'tipo_membresia_id.required' => 'Debe seleccionar un tipo de membresía para el nuevo miembro.',
+            'fecha_inicio_membresia.required' => 'La fecha de inicio de la membresía es obligatoria para el nuevo miembro.',
+            'nuevaMembresia_tipo_id.required' => 'Debe seleccionar un tipo para la nueva membresía.',
+            'nuevaMembresia_tipo_id.exists' => 'El tipo de membresía seleccionado no es válido.',
+            'nuevaMembresia_fecha_inicio.required' => 'La fecha de inicio es obligatoria para la nueva membresía.',
+            'nuevaMembresia_fecha_inicio.date' => 'La fecha de inicio para la nueva membresía no es válida.',
+        ];
+    }
+
+    public function updated($propertyName)
+    {
+        if ($propertyName === 'foto') {
+             $this->validateOnly($propertyName, ['foto' => 'nullable|image|max:2048']);
+        }
+    }
+
+    // --- Control de Modales ---
+    public function mostrarModalRegistroMiembro()
+    {
+        $this->resetInputFields();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function ocultarModalRegistroMiembro()
+    {
+        $this->mostrandoModalRegistro = false;
+        $this->resetInputFields();
+    }
+
+    public function confirmarEliminacionMiembro($id)
+    {
+        $this->miembroParaEliminarId = $id;
+        $this->mostrandoModalConfirmacionEliminar = true;
+    }
+
+    public function ocultarModalConfirmacionEliminar()
+    {
+        $this->mostrandoModalConfirmacionEliminar = false;
+        $this->miembroParaEliminarId = null;
+    }
+
+    private function resetInputFields()
+    {
+        $this->miembroSeleccionadoId = null;
+        $this->nombre = '';
+        $this->apellido = '';
+        $this->email = '';
+        $this->telefono = '';
+        $this->fecha_nacimiento = '';
+        $this->direccion = '';
+        $this->sucursal_id = $this->sucursales->first()->id ?? null;
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->foto = null;
+        $this->foto_actual_path = null;
+
+        // Resetear también los campos del sub-modal de gestión de membresías
+        $this->miembroParaGestionarMembresias = null;
+        $this->historialMembresias = [];
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+
+        // Resetear campos del modal de cancelación
+        $this->membresiaParaCancelarId = null;
+        $this->membresiaParaCancelarInfo = null;
+
+        $this->resetErrorBag();
+        $this->resetValidation();
+    }
+
+    // --- Operaciones CRUD Miembro ---
+    public function guardarMiembro()
+    {
+        if ($this->miembroSeleccionadoId) {
+            return $this->actualizarMiembro();
+        }
+        $validatedData = $this->validate();
+        $rutaFoto = null;
+        if ($this->foto) {
+            $rutaFoto = $this->foto->store('fotos_miembros', 'public');
+        }
+        $miembro = Miembro::create([
+            'nombre' => $validatedData['nombre'],
+            'apellido' => $validatedData['apellido'],
+            'email' => $validatedData['email'],
+            'telefono' => $validatedData['telefono'],
+            'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+            'direccion' => $validatedData['direccion'],
+            'sucursal_id' => $validatedData['sucursal_id'],
+            'codigo_acceso_numerico' => (string) rand(100000, 999999),
+            'foto_path' => $rutaFoto,
+        ]);
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['tipo_membresia_id']);
+        if ($tipoMembresiaSeleccionado) {
+            $fechaFin = Carbon::parse($validatedData['fecha_inicio_membresia'])
+                                ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                                ->format('Y-m-d');
+            $miembro->membresias()->create([
+                'tipo_membresia_id' => $validatedData['tipo_membresia_id'],
+                'fecha_inicio' => $validatedData['fecha_inicio_membresia'],
+                'fecha_fin' => $fechaFin,
+                'estado' => 'activa',
+            ]);
+        }
+        session()->flash('message', 'Miembro y membresía registrados exitosamente.');
+        $this->ocultarModalRegistroMiembro();
+    }
+
+    public function editarMiembro($id)
+    {
+        $miembro = Miembro::findOrFail($id);
+        $this->miembroSeleccionadoId = $miembro->id;
+        $this->nombre = $miembro->nombre;
+        $this->apellido = $miembro->apellido;
+        $this->email = $miembro->email;
+        $this->telefono = $miembro->telefono;
+        $this->fecha_nacimiento = $miembro->fecha_nacimiento ? Carbon::parse($miembro->fecha_nacimiento)->format('Y-m-d') : null;
+        $this->direccion = $miembro->direccion;
+        $this->sucursal_id = $miembro->sucursal_id;
+        $this->foto_actual_path = $miembro->foto_path;
+        $this->foto = null;
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null;
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->resetErrorBag();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function actualizarMiembro()
+    {
+        if (!$this->miembroSeleccionadoId) {
+            session()->flash('error', 'Error al actualizar: No hay miembro seleccionado.');
+            $this->ocultarModalRegistroMiembro();
+            return;
+        }
+        $updateRules = $this->rules();
+        unset($updateRules['tipo_membresia_id']);
+        unset($updateRules['fecha_inicio_membresia']);
+        $validatedData = $this->validate($updateRules);
+        $miembro = Miembro::find($this->miembroSeleccionadoId);
+        if ($miembro) {
+            $updateDataArr = [
+                'nombre' => $validatedData['nombre'],
+                'apellido' => $validatedData['apellido'],
+                'email' => $validatedData['email'],
+                'telefono' => $validatedData['telefono'],
+                'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+                'direccion' => $validatedData['direccion'],
+                'sucursal_id' => $validatedData['sucursal_id'],
+            ];
+            if ($this->foto) {
+                if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
+                    Storage::disk('public')->delete($miembro->foto_path);
+                }
+                $updateDataArr['foto_path'] = $this->foto->store('fotos_miembros', 'public');
+            }
+            $miembro->update($updateDataArr);
+            session()->flash('message', 'Miembro actualizado exitosamente.');
+        } else {
+            session()->flash('error', 'No se encontró el miembro para actualizar.');
+        }
+        $this->ocultarModalRegistroMiembro();
+    }
+
+    public function eliminarMiembro()
+    {
+        if ($this->miembroParaEliminarId) {
+            $miembro = Miembro::find($this->miembroParaEliminarId);
+            if ($miembro) {
+                try {
+                    if ($miembro->foto_path && Storage::disk('public')->exists($miembro->foto_path)) {
+                        Storage::disk('public')->delete($miembro->foto_path);
+                    }
+                    $miembro->delete();
+                    session()->flash('message', 'Miembro eliminado exitosamente.');
+                } catch (\Illuminate\Database\QueryException $e) {
+                    session()->flash('error', 'No se pudo eliminar el miembro. Puede tener datos asociados que impiden su eliminación directa.');
+                } catch (\Exception $e) {
+                    session()->flash('error', 'Ocurrió un error al intentar eliminar el miembro: ' . $e->getMessage());
+                }
+            } else {
+                session()->flash('error', 'No se encontró el miembro para eliminar.');
+            }
+            $this->ocultarModalConfirmacionEliminar();
+        }
+    }
+
+    // --- Modal de Gestión de Membresías del Miembro ---
+    public function abrirModalGestionMembresias($miembroId)
+    {
+        $this->miembroParaGestionarMembresias = Miembro::find($miembroId);
+        if (!$this->miembroParaGestionarMembresias) {
+            session()->flash('error', 'No se encontró el miembro.');
+            return;
+        }
+        $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                        ->with('tipoMembresia')
+                                        ->orderBy('fecha_inicio', 'desc')
+                                        ->get();
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+        $this->mostrandoModalGestionMembresiasMiembro = true;
+    }
+
+    public function cerrarModalGestionMembresias()
+    {
+        $this->mostrandoModalGestionMembresiasMiembro = false;
+        $this->miembroParaGestionarMembresias = null;
+        $this->historialMembresias = [];
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+    }
+
+    // --- Acciones dentro del Modal de Gestión de Membresías ---
+    public function confirmarCancelacionMembresia($membresiaId)
+    {
+        $membresia = Membresia::with('tipoMembresia')->find($membresiaId);
+        if ($membresia && $membresia->estado == 'activa' && Carbon::parse($membresia->fecha_fin)->gte(Carbon::today())) {
+            $this->membresiaParaCancelarId = $membresia->id;
+            $this->membresiaParaCancelarInfo = ($membresia->tipoMembresia->nombre ?? 'N/A') . " (Fin: " . Carbon::parse($membresia->fecha_fin)->format('d/m/Y') . ")";
+            $this->mostrandoModalConfirmacionCancelarMembresia = true;
+        } else {
+            session()->flash('error_modal_gestion', 'Esta membresía no se puede cancelar o ya no está activa.');
+        }
+    }
+
+    public function ocultarModalConfirmacionCancelarMembresia()
+    {
+        $this->mostrandoModalConfirmacionCancelarMembresia = false;
+        $this->membresiaParaCancelarId = null;
+        $this->membresiaParaCancelarInfo = null;
+    }
+
+    public function ejecutarCancelacionMembresia()
+    {
+        if (!$this->membresiaParaCancelarId) {
+            session()->flash('error_modal_gestion', 'No hay membresía seleccionada para cancelar.');
+            $this->ocultarModalConfirmacionCancelarMembresia();
+            return;
+        }
+        $membresia = Membresia::find($this->membresiaParaCancelarId);
+        if ($membresia && $membresia->estado == 'activa' && Carbon::parse($membresia->fecha_fin)->gte(Carbon::today())) {
+            $membresia->estado = 'cancelada';
+            $membresia->save();
+            if ($this->miembroParaGestionarMembresias) {
+                $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                                ->with('tipoMembresia')
+                                                ->orderBy('fecha_inicio', 'desc')
+                                                ->get();
+            }
+            session()->flash('message_modal_gestion', 'La membresía ha sido cancelada.');
+        } else {
+            session()->flash('error_modal_gestion', 'No se pudo cancelar la membresía o ya no estaba activa.');
+        }
+        $this->ocultarModalConfirmacionCancelarMembresia();
+    }
+
+    public function prepararRenovacionMembresia($membresiaId)
+    {
+        $membresiaAnterior = Membresia::find($membresiaId);
+        if (!$membresiaAnterior) {
+            session()->flash('error_modal_gestion', 'No se encontró la membresía original para renovar.');
+            $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+            $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+            $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+            return;
+        }
+        $this->nuevaMembresia_tipo_id = $membresiaAnterior->tipo_membresia_id;
+        $fechaFinAnterior = Carbon::parse($membresiaAnterior->fecha_fin);
+        $hoy = Carbon::today();
+        if ($fechaFinAnterior->gte($hoy)) {
+            $this->nuevaMembresia_fecha_inicio = $fechaFinAnterior->addDay()->format('Y-m-d');
+        } else {
+            $this->nuevaMembresia_fecha_inicio = $hoy->format('Y-m-d');
+        }
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+        session()->flash('info_modal_gestion', 'Datos de renovación cargados en el formulario "Añadir Nueva Membresía". Por favor, verifique y presione "Añadir Nueva Membresía" para confirmar.');
+    }
+
+    public function guardarNuevaMembresiaParaMiembro()
+    {
+        if (!$this->miembroParaGestionarMembresias) {
+            session()->flash('error_modal_gestion', 'No hay un miembro seleccionado para añadir la membresía.');
+            return;
+        }
+        $validatedData = $this->validate([
+            'nuevaMembresia_tipo_id' => 'required|exists:tipos_membresia,id',
+            'nuevaMembresia_fecha_inicio' => 'required|date',
+        ]);
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['nuevaMembresia_tipo_id']);
+        if (!$tipoMembresiaSeleccionado) {
+            session()->flash('error_modal_gestion', 'Tipo de membresía no encontrado.');
+            return;
+        }
+        $fechaFin = Carbon::parse($validatedData['nuevaMembresia_fecha_inicio'])
+                        ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                        ->format('Y-m-d');
+        $this->miembroParaGestionarMembresias->membresias()->create([
+            'tipo_membresia_id' => $validatedData['nuevaMembresia_tipo_id'],
+            'fecha_inicio' => $validatedData['nuevaMembresia_fecha_inicio'],
+            'fecha_fin' => $fechaFin,
+            'estado' => 'activa',
+        ]);
+        session()->flash('message_modal_gestion', 'Nueva membresía añadida exitosamente al miembro.');
+        $this->historialMembresias = $this->miembroParaGestionarMembresias->membresias()
+                                        ->with('tipoMembresia')
+                                        ->orderBy('fecha_inicio', 'desc')
+                                        ->get();
+        $this->nuevaMembresia_tipo_id = $this->tiposMembresia->first()->id ?? null;
+        $this->nuevaMembresia_fecha_inicio = now()->format('Y-m-d');
+        $this->resetErrorBag(['nuevaMembresia_tipo_id', 'nuevaMembresia_fecha_inicio']);
+    }
+
+    public function render()
+    {
+        $miembros = Miembro::with(['sucursal', 'membresiaActivaActual.tipoMembresia', 'ultimaMembresiaGeneral.tipoMembresia'])
+        ->when($this->search, function ($query) {
+            $query->where(function ($q) {
+                $q->where('nombre', 'like', '%' . $this->search . '%')
+                  ->orWhere('apellido', 'like', '%' . $this->search . '%')
+                  ->orWhere('email', 'like', '%' . $this->search . '%');
+            });
+        })
+        ->latest()
+        ->paginate(10);
+
+        return view('livewire.gestion-membresias', [
+            'miembros' => $miembros,
+        ])->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: GestionMembresias2.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\Miembro;
+use App\Models\Membresia;
+use App\Models\Sucursal;
+use App\Models\TipoMembresia;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it
+use Livewire\WithPagination; // For pagination
+
+class GestionMembresias extends Component
+{
+    use WithPagination;
+
+    public string $title = "Gestión de Miembros y Membresías";
+
+    // Propiedades para el formulario
+    public $miembroSeleccionadoId;
+    public $nombre, $apellido, $email, $telefono, $fecha_nacimiento, $direccion;
+    public $sucursal_id;
+    public $tipo_membresia_id;
+    public $fecha_inicio_membresia;
+    // public $foto_path; // Descomentar si se usa WithFileUploads
+
+    public $mostrandoModalRegistro = false;
+
+    // Datos para selectores
+    public $sucursales;
+    public $tiposMembresia;
+
+    // Para búsqueda y filtros (se pueden añadir más adelante)
+    public $search = '';
+    public $filtroEstado = '';
+    public $filtroTipoMembresia = '';
+    public $filtroSucursal = '';
+
+    protected $paginationTheme = 'tailwind'; // Use Tailwind theme for pagination
+
+    public function mount()
+    {
+        $this->sucursales = Sucursal::orderBy('nombre')->get();
+        $this->tiposMembresia = TipoMembresia::orderBy('nombre')->get();
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        $this->resetInputFields(); // Ensure fields are clean on initial load
+    }
+
+    protected function rules()
+    {
+        $emailRule = 'required|email|unique:miembros,email';
+        if ($this->miembroSeleccionadoId) {
+            $emailRule .= ',' . $this->miembroSeleccionadoId;
+        }
+
+        return [
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
+            'email' => $emailRule,
+            'telefono' => 'nullable|string|max:25',
+            'fecha_nacimiento' => 'required|date',
+            'direccion' => 'nullable|string|max:255',
+            'sucursal_id' => 'required|exists:sucursales,id',
+            'tipo_membresia_id' => 'required|exists:tipos_membresia,id',
+            'fecha_inicio_membresia' => 'required|date',
+            // 'foto_path' => 'nullable|image|max:1024', // Example if using file uploads
+        ];
+    }
+
+    public function updated($propertyName)
+    {
+        $this->validateOnly($propertyName);
+    }
+
+    public function mostrarModalRegistroMiembro()
+    {
+        $this->resetInputFields();
+        $this->mostrandoModalRegistro = true;
+    }
+
+    public function ocultarModalRegistroMiembro()
+    {
+        $this->mostrandoModalRegistro = false;
+        $this->resetInputFields();
+        $this->resetErrorBag(); // Clear validation errors when closing modal
+    }
+
+    private function resetInputFields()
+    {
+        $this->miembroSeleccionadoId = null;
+        $this->nombre = '';
+        $this->apellido = '';
+        $this->email = '';
+        $this->telefono = '';
+        $this->fecha_nacimiento = '';
+        $this->direccion = '';
+        $this->sucursal_id = $this->sucursales->first()->id ?? null; // Default to first sucursal
+        $this->tipo_membresia_id = $this->tiposMembresia->first()->id ?? null; // Default to first tipo membresia
+        $this->fecha_inicio_membresia = now()->format('Y-m-d');
+        // $this->foto_path = null;
+    }
+
+    public function guardarMiembro()
+    {
+        $validatedData = $this->validate();
+
+        // Lógica para foto_path si se implementa
+        // if ($this->foto_path) {
+        //     $validatedData['foto_path'] = $this->foto_path->store('fotos_miembros', 'public');
+        // }
+
+        $miembro = Miembro::create([
+            'nombre' => $validatedData['nombre'],
+            'apellido' => $validatedData['apellido'],
+            'email' => $validatedData['email'],
+            'telefono' => $validatedData['telefono'],
+            'fecha_nacimiento' => $validatedData['fecha_nacimiento'],
+            'direccion' => $validatedData['direccion'],
+            'sucursal_id' => $validatedData['sucursal_id'],
+            'codigo_acceso_numerico' => (string) rand(100000, 999999), // Placeholder
+            // 'foto_path' => $validatedData['foto_path'] ?? null,
+        ]);
+
+        $tipoMembresiaSeleccionado = TipoMembresia::find($validatedData['tipo_membresia_id']);
+        if ($tipoMembresiaSeleccionado) {
+            $fechaFin = Carbon::parse($validatedData['fecha_inicio_membresia'])
+                                ->addDays($tipoMembresiaSeleccionado->duracion_dias)
+                                ->format('Y-m-d');
+
+            $miembro->membresias()->create([
+                'tipo_membresia_id' => $validatedData['tipo_membresia_id'],
+                'fecha_inicio' => $validatedData['fecha_inicio_membresia'],
+                'fecha_fin' => $fechaFin,
+                'estado' => 'activa', // Asumir activa al crear
+            ]);
+        }
+
+        session()->flash('message', 'Miembro y membresía registrados exitosamente.');
+        $this->ocultarModalRegistroMiembro();
+    }
+
+    public function render()
+    {
+        // TODO: Implementar filtros y búsqueda
+        $miembros = Miembro::with(['sucursal', 'membresias' => function ($query) {
+            $query->orderBy('fecha_fin', 'desc');
+        }])
+        ->when($this->search, function ($query) {
+            $query->where(function ($q) {
+                $q->where('nombre', 'like', '%' . $this->search . '%')
+                  ->orWhere('apellido', 'like', '%' . $this->search . '%')
+                  ->orWhere('email', 'like', '%' . $this->search . '%');
+            });
+        })
+        // TODO: Add filters for estado, tipo_membresia, sucursal
+        ->latest()
+        ->paginate(10);
+
+        return view('livewire.gestion-membresias', [
+            'miembros' => $miembros,
+        ])->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: GestionRoles.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Livewire\WithPagination;
+use Illuminate\Validation\Rule;
+
+class GestionRoles extends Component
+{
+    use WithPagination;
+
+    public $nombreRol, $rolId, $permisosSeleccionados = [];
+    public $todosLosPermisos;
+    public $search = '';
+    public $isOpen = false;
+    public $isPermissionsModalOpen = false;
+    public $rolActualPermisos;
+
+    protected $paginationTheme = 'tailwind';
+
+    protected $rules = [
+        'nombreRol' => 'required|string|min:3|max:255',
+    ];
+
+    public function mount()
+    {
+        $this->todosLosPermisos = Permission::all()->pluck('name', 'id');
+    }
+
+    public function render()
+    {
+        $roles = Role::where('name', 'like', '%' . $this->search . '%')
+            ->where('name', '!=', 'Admin') // Opcional: no permitir editar/eliminar rol Admin
+            ->paginate(10);
+        return view('livewire.gestion-roles', [
+            'roles' => $roles,
+        ]);
+    }
+
+    public function create()
+    {
+        $this->resetInputFields();
+        $this->openModal();
+    }
+
+    public function openModal()
+    {
+        $this->isOpen = true;
+        $this->isPermissionsModalOpen = false; // Asegurar que el otro modal esté cerrado
+    }
+
+    public function closeModal()
+    {
+        $this->isOpen = false;
+    }
+
+    private function resetInputFields()
+    {
+        $this->nombreRol = '';
+        $this->rolId = null;
+        $this->permisosSeleccionados = [];
+        $this->resetErrorBag();
+    }
+
+    public function store()
+    {
+        $permission = $this->rolId ? 'editar rol' : 'crear rol';
+        $this->authorize($permission);
+
+        $this->validate([
+            'nombreRol' => [
+                'required',
+                'string',
+                'min:3',
+                'max:255',
+                Rule::unique('roles', 'name')->ignore($this->rolId)
+            ]
+        ]);
+
+        Role::updateOrCreate(['id' => $this->rolId], [
+            'name' => $this->nombreRol,
+            'guard_name' => 'web' // Por defecto para aplicaciones web
+        ]);
+
+        session()->flash('message',
+            $this->rolId ? 'Rol actualizado exitosamente.' : 'Rol creado exitosamente.');
+
+        $this->closeModal();
+        $this->resetInputFields();
+    }
+
+    public function edit($id)
+    {
+        $this->authorize('editar rol');
+        $role = Role::findOrFail($id);
+        // No permitir editar el rol 'Admin' directamente aquí
+        if ($role->name === 'Admin') {
+            session()->flash('error', 'El rol Admin no puede ser editado desde aquí.');
+            return;
+        }
+        $this->rolId = $id;
+        $this->nombreRol = $role->name;
+        $this->openModal();
+    }
+
+    public function delete($id)
+    {
+        $this->authorize('eliminar rol');
+        $role = Role::findOrFail($id);
+        if ($role->name === 'Admin') {
+            session()->flash('error', 'El rol Admin no puede ser eliminado.');
+            return;
+        }
+
+        // Verificar si el rol tiene usuarios asignados
+        if ($role->users()->count() > 0) {
+            session()->flash('error', 'Este rol tiene usuarios asignados y no puede ser eliminado.');
+            return;
+        }
+
+        $role->delete();
+        session()->flash('message', 'Rol eliminado exitosamente.');
+    }
+
+    // --- Gestión de Permisos para un Rol ---
+
+    public function openPermissionsModal($rolId)
+    {
+        $this->authorize('asignar permisos a rol'); // O podría ser 'editar rol' si se considera parte de la edición
+        $this->rolId = $rolId;
+        $role = Role::findOrFail($rolId);
+        $this->nombreRol = $role->name;
+        $this->permisosSeleccionados = $role->permissions->pluck('name')->toArray();
+        $this->rolActualPermisos = $role;
+        $this->isPermissionsModalOpen = true;
+        $this->isOpen = false; // Asegurar que el otro modal esté cerrado
+    }
+
+    public function closePermissionsModal()
+    {
+        $this->isPermissionsModalOpen = false;
+        $this->resetInputFields(); // También resetea permisosSeleccionados
+    }
+
+    public function guardarPermisos()
+    {
+        $this->authorize('asignar permisos a rol'); // O 'editar rol'
+
+        $this->validate([
+            'permisosSeleccionados' => 'array'
+        ]);
+
+        $role = Role::findOrFail($this->rolId);
+
+        if ($role->name === 'Admin') {
+            session()->flash('error', 'Los permisos del rol Admin no pueden ser modificados desde aquí.');
+            $this->closePermissionsModal();
+            return;
+        }
+
+        // Obtener los permisos que realmente existen en la BD para evitar errores
+        $permisosExistentes = Permission::whereIn('name', $this->permisosSeleccionados)->get();
+        $role->syncPermissions($permisosExistentes);
+
+        session()->flash('message', 'Permisos actualizados para el rol ' . $role->name);
+        $this->closePermissionsModal();
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+}
+ 
+Nombre del archivo: GestionSucursales.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\Sucursal; // Importar el modelo
+use Livewire\WithPagination;
+
+
+
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash; // For codigo_acceso if we hash it (optional)
+
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
+
+
+
+
+
+
+class GestionSucursales extends Component
+{
+    use WithPagination;
+
+    public $title = "Gestión de Sucursales";
+
+    // Propiedades para el formulario
+    public $sucursalId;
+    public $nombre;
+    public $direccion;
+    public $telefono;
+    // public $logo_path; // Se podría añadir después si se implementa subida de logo
+
+    // Propiedades para controlar modales
+    public $mostrandoModalSucursal = false;
+    public $modoEdicionSucursal = false; // Usar un nombre específico para evitar colisiones si se copian modales
+
+    protected $paginationTheme = 'tailwind';
+
+    protected function rules()
+    {
+        return [
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('sucursales', 'nombre')->ignore($this->sucursalId)
+            ],
+            'direccion' => 'required|string|max:255',
+            'telefono' => 'nullable|string|max:25',
+            // 'logo_path' => 'nullable|image|max:1024' // Para cuando se implemente el logo
+        ];
+    }
+
+    protected function messages()
+    {
+        return [
+            'nombre.required' => 'El nombre de la sucursal es obligatorio.',
+            'nombre.unique' => 'Ya existe una sucursal con este nombre.',
+            'direccion.required' => 'La dirección es obligatoria.',
+            'telefono.max' => 'El teléfono no debe exceder los 25 caracteres.',
+        ];
+    }
+
+    public function updated($propertyName)
+    {
+        $this->validateOnly($propertyName);
+    }
+
+    public function mount()
+    {
+        // Podríamos inicializar algo aquí si fuera necesario
+    }
+
+    private function resetInputFieldsSucursal()
+    {
+        $this->sucursalId = null;
+        $this->nombre = '';
+        $this->direccion = '';
+        $this->telefono = '';
+        // $this->logo_path = null;
+        $this->modoEdicionSucursal = false;
+        $this->resetErrorBag();
+        $this->resetValidation();
+    }
+
+    public function crearNuevaSucursal()
+    {
+        $this->resetInputFieldsSucursal();
+        $this->modoEdicionSucursal = false;
+        $this->mostrandoModalSucursal = true;
+    }
+
+    public function cerrarModalSucursal()
+    {
+        $this->mostrandoModalSucursal = false;
+        $this->resetInputFieldsSucursal(); // Asegurar que se limpien los campos al cerrar
+    }
+
+    // Métodos para guardar, editar, actualizar, eliminar (se crearán en pasos posteriores)
+    public function guardarSucursal()
+    {
+        // Asegurarse de que no estamos en modo edición por si acaso
+        if ($this->modoEdicionSucursal || $this->sucursalId) {
+            // Esto no debería ocurrir si la UI llama al método correcto (actualizarSucursal)
+            // pero es una salvaguarda. Podría redirigir a actualizar o simplemente retornar.
+            // session()->flash('error', 'Error de flujo: Intento de guardar como nuevo durante una edición.');
+            // $this->cerrarModalSucursal();
+            return $this->actualizarSucursal(); // Opcionalmente, redirigir la lógica si hay un ID.
+        }
+
+        // Validar los datos usando las reglas y mensajes definidos en el componente
+        $validatedData = $this->validate(); // Esto usará los métodos rules() y messages()
+
+        // Crear la nueva sucursal
+        Sucursal::create([
+            'nombre' => $validatedData['nombre'],
+            'direccion' => $validatedData['direccion'],
+            'telefono' => $validatedData['telefono'],
+            // 'logo_path' => $this->logo_path, // Si se implementa subida de logo
+        ]);
+
+        // Mostrar mensaje de éxito
+        session()->flash('message', 'Sucursal creada exitosamente.');
+
+        // Cerrar el modal y resetear los campos del formulario
+        $this->cerrarModalSucursal(); // Este método ya debería llamar a resetInputFieldsSucursal()
+    }
+
+    public $mostrandoModalConfirmacionEliminarSucursal = false;
+    public $sucursalParaEliminarId;
+
+    public function editarSucursal($id)
+    {
+        $sucursal = Sucursal::findOrFail($id); // Usar findOrFail para manejar el caso de ID no encontrado
+
+        $this->sucursalId = $sucursal->id;
+        $this->nombre = $sucursal->nombre;
+        $this->direccion = $sucursal->direccion;
+        $this->telefono = $sucursal->telefono;
+        // $this->logo_path = $sucursal->logo_path; // Para cuando se implemente el logo
+
+        $this->modoEdicionSucursal = true;
+        $this->mostrandoModalSucursal = true;
+        $this->resetErrorBag(); // Limpiar errores de validación por si había alguno antes
+    }
+
+    public function actualizarSucursal()
+    {
+        // Asegurarse de que estamos en modo edición y tenemos un ID
+        if (!$this->modoEdicionSucursal || !$this->sucursalId) {
+            session()->flash('error', 'Error al intentar actualizar. Modo o ID incorrecto.');
+            $this->cerrarModalSucursal(); // Cierra el modal y resetea
+            return;
+        }
+
+        // Validar los datos (las reglas ya están configuradas para manejar la unicidad del nombre al editar)
+        $validatedData = $this->validate();
+
+        $sucursal = Sucursal::find($this->sucursalId);
+
+        if ($sucursal) {
+            $sucursal->update([
+                'nombre' => $validatedData['nombre'],
+                'direccion' => $validatedData['direccion'],
+                'telefono' => $validatedData['telefono'],
+                // 'logo_path' => $this->logo_path, // Si se implementa logo y se actualiza
+            ]);
+
+            session()->flash('message', 'Sucursal actualizada exitosamente.');
+        } else {
+            // Manejar el caso raro de que el ID no se encuentre después de haberlo cargado
+            session()->flash('error', 'No se encontró la sucursal para actualizar.');
+        }
+
+        $this->cerrarModalSucursal(); // Este método ya resetea los campos, el modoEdicion y oculta el modal
+    }
+
+    public function confirmarEliminacionSucursal($id)
+    {
+        $this->sucursalParaEliminarId = $id;
+        $this->mostrandoModalConfirmacionEliminarSucursal = true;
+    }
+
+    public function ocultarModalConfirmacionEliminarSucursal()
+    {
+        $this->mostrandoModalConfirmacionEliminarSucursal = false;
+        $this->sucursalParaEliminarId = null;
+    }
+
+    public function eliminarSucursal()
+    {
+        if ($this->sucursalParaEliminarId) {
+            $sucursal = Sucursal::find($this->sucursalParaEliminarId);
+
+            if ($sucursal) {
+                // Verificar relaciones antes de eliminar
+                if ($sucursal->miembros()->exists()) {
+                    session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene miembros asociados. Reasigne los miembros primero.');
+                    $this->ocultarModalConfirmacionEliminarSucursal();
+                    return;
+                }
+
+                if ($sucursal->dispositivosControlAcceso()->exists()) {
+                    session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene dispositivos de control de acceso asociados.');
+                    $this->ocultarModalConfirmacionEliminarSucursal();
+                    return;
+                }
+
+                if ($sucursal->usuariosSistema()->exists()) {
+                     session()->flash('error', 'Esta sucursal no se puede eliminar porque tiene usuarios del sistema asignados. Reasígnelos primero.');
+                    $this->ocultarModalConfirmacionEliminarSucursal();
+                    return;
+                }
+
+                try {
+                    // Lógica para eliminar logo si existe (se implementará si se añade gestión de logos)
+                    // if ($sucursal->logo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($sucursal->logo_path)) {
+                    //     \Illuminate\Support\Facades\Storage::disk('public')->delete($sucursal->logo_path);
+                    // }
+                    $sucursal->delete(); // Borrado físico
+                    session()->flash('message', 'Sucursal eliminada exitosamente.');
+                } catch (\Illuminate\Database\QueryException $e) {
+                    session()->flash('error', 'No se pudo eliminar la sucursal. Error de base de datos: ' . $e->getMessage());
+                }
+            } else {
+                session()->flash('error', 'No se encontró la sucursal para eliminar.');
+            }
+            $this->ocultarModalConfirmacionEliminarSucursal();
+        }
+    }
+
+    public function render()
+    {
+        $sucursales = Sucursal::orderBy('nombre') // Ordenar por nombre, por ejemplo
+                               ->paginate(10);    // Paginar, 10 por página
+
+        $sucursales->each(function ($sucursal) {
+            // Agregar una propiedad 'logo' si se desea mostrar el logo
+            $sucursal->logo = $sucursal->logo_path; // Agregar la propiedad 'logo' aquí
+        });
+        return view('livewire.gestion-sucursales', [
+            'sucursales' => $sucursales, // Pasar las sucursales a la vista
+        ])->layout('layouts.app', ['title' => $this->title]);
+    }
+
+
+
+
+
+
+
+
+}
+ 
+Nombre del archivo: GestionTiposMembresia.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\TipoMembresia;
+use Livewire\WithPagination;
+
+class GestionTiposMembresia extends Component
+{
+    use WithPagination;
+
+    public $title = "Gestión de Tipos de Membresía";
+
+    // Propiedades para el formulario
+    public $tipoMembresiaId;
+    public $nombre;
+    public $descripcion;
+    public $duracion_dias;
+    public $precio;
+
+    // Control de Modales
+    public $mostrandoModal = false;
+    public $modoEdicion = false;
+    public $mostrandoModalConfirmacionEliminarTipo = false;
+    public $tipoMembresiaParaEliminarId;
+
+    protected $paginationTheme = 'tailwind';
+
+    protected function rules()
+    {
+        return [
+            'nombre' => 'required|string|max:255|unique:tipos_membresia,nombre,' . $this->tipoMembresiaId,
+            'descripcion' => 'nullable|string|max:1000',
+            'duracion_dias' => 'required|integer|min:1',
+            'precio' => 'required|numeric|min:0',
+        ];
+    }
+
+    protected function messages()
+    {
+        return [
+            'nombre.required' => 'El nombre del tipo de membresía es obligatorio.',
+            'nombre.unique' => 'Este nombre de tipo de membresía ya existe.',
+            'duracion_dias.required' => 'La duración en días es obligatoria.',
+            'duracion_dias.integer' => 'La duración debe ser un número entero.',
+            'duracion_dias.min' => 'La duración debe ser de al menos 1 día.',
+            'precio.required' => 'El precio es obligatorio.',
+            'precio.numeric' => 'El precio debe ser un valor numérico.',
+            'precio.min' => 'El precio no puede ser negativo.',
+        ];
+    }
+
+    public function updated($propertyName)
+    {
+        $this->validateOnly($propertyName);
+    }
+
+    // --- Control de Modales ---
+    public function crearNuevoTipoMembresia()
+    {
+        $this->resetInputFields();
+        $this->modoEdicion = false;
+        $this->mostrandoModal = true;
+    }
+
+    public function cerrarModal()
+    {
+        $this->mostrandoModal = false;
+        $this->resetInputFields(); // Asegura que todo se limpie al cerrar
+    }
+
+    public function confirmarEliminacion($id)
+    {
+        $this->tipoMembresiaParaEliminarId = $id;
+        $this->mostrandoModalConfirmacionEliminarTipo = true;
+    }
+
+    public function ocultarModalConfirmacionEliminarTipo()
+    {
+        $this->mostrandoModalConfirmacionEliminarTipo = false;
+        $this->tipoMembresiaParaEliminarId = null;
+    }
+
+    private function resetInputFields()
+    {
+        $this->tipoMembresiaId = null;
+        $this->nombre = '';
+        $this->descripcion = '';
+        $this->duracion_dias = null;
+        $this->precio = null;
+        $this->modoEdicion = false;
+        $this->resetErrorBag();
+        $this->resetValidation();
+    }
+
+    // --- Operaciones CRUD ---
+    public function guardarTipoMembresia()
+    {
+        $this->authorize('crear tipo membresia');
+
+        // Si hay un ID, debería ser una actualización, pero el flujo de UI debe llamar a actualizarTipoMembresia.
+        // Esta guarda es solo para nuevos.
+        if($this->modoEdicion || $this->tipoMembresiaId) {
+             session()->flash('error', 'Error de flujo: intentando guardar como nuevo durante una edición.');
+             $this->cerrarModal();
+             return;
+        }
+
+        $this->validate();
+
+        TipoMembresia::create([
+            'nombre' => $this->nombre,
+            'descripcion' => $this->descripcion,
+            'duracion_dias' => $this->duracion_dias,
+            'precio' => $this->precio,
+        ]);
+
+        session()->flash('message', 'Tipo de membresía creado exitosamente.');
+        $this->cerrarModal();
+    }
+
+    public function editarTipoMembresia($id)
+    {
+        $tipoMembresia = TipoMembresia::findOrFail($id);
+
+        $this->tipoMembresiaId = $tipoMembresia->id;
+        $this->nombre = $tipoMembresia->nombre;
+        $this->descripcion = $tipoMembresia->descripcion;
+        $this->duracion_dias = $tipoMembresia->duracion_dias;
+        $this->precio = $tipoMembresia->precio;
+
+        $this->modoEdicion = true;
+        $this->mostrandoModal = true;
+        $this->resetErrorBag();
+    }
+
+    public function actualizarTipoMembresia()
+    {
+        $this->authorize('editar tipo membresia');
+
+        if (!$this->tipoMembresiaId || !$this->modoEdicion) {
+            session()->flash('error', 'Error al actualizar: No hay tipo de membresía seleccionado para edición.');
+            $this->cerrarModal();
+            return;
+        }
+
+        $this->validate();
+
+        $tipoMembresia = TipoMembresia::find($this->tipoMembresiaId);
+
+        if ($tipoMembresia) {
+            $tipoMembresia->update([
+                'nombre' => $this->nombre,
+                'descripcion' => $this->descripcion,
+                'duracion_dias' => $this->duracion_dias,
+                'precio' => $this->precio,
+            ]);
+
+            session()->flash('message', 'Tipo de membresía actualizado exitosamente.');
+        } else {
+            session()->flash('error', 'No se encontró el tipo de membresía para actualizar.');
+        }
+        $this->cerrarModal();
+    }
+
+    public function eliminarTipoMembresia()
+    {
+        $this->authorize('eliminar tipo membresia');
+
+        if ($this->tipoMembresiaParaEliminarId) {
+            $tipoMembresia = TipoMembresia::find($this->tipoMembresiaParaEliminarId);
+
+            if ($tipoMembresia) {
+                if ($tipoMembresia->membresias()->exists()) {
+                    session()->flash('error', 'Este tipo de membresía no se puede eliminar porque está siendo utilizado por una o más membresías de miembros.');
+                    $this->ocultarModalConfirmacionEliminarTipo();
+                    return;
+                }
+
+                try {
+                    $tipoMembresia->delete();
+                    session()->flash('message', 'Tipo de membresía eliminado exitosamente.');
+                } catch (\Illuminate\Database\QueryException $e) {
+                    session()->flash('error', 'No se pudo eliminar el tipo de membresía. Error de base de datos: ' . $e->getCode());
+                }
+            } else {
+                session()->flash('error', 'No se encontró el tipo de membresía para eliminar.');
+            }
+            $this->ocultarModalConfirmacionEliminarTipo();
+        }
+    }
+
+    public function render()
+    {
+        $tiposMembresia = TipoMembresia::orderBy('nombre')->paginate(10);
+
+        return view('livewire.gestion-tipos-membresia', [
+            'tiposMembresia' => $tiposMembresia,
+        ])->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: GestionUsuarios.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Livewire\WithPagination;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage; // Para la foto
+use Livewire\WithFileUploads; // Para la foto
+
+class GestionUsuarios extends Component
+{
+    use WithPagination, WithFileUploads;
+
+    public $userId, $name, $apellido, $email, $sucursal_id, $activo, $password, $password_confirmation;
+    public $rolesUsuario = [];
+    public $foto_path, $foto_nueva;
+
+    public $todosLosRoles;
+    public $todasLasSucursales;
+
+    public $search = '';
+    public $isOpen = false;
+    protected $paginationTheme = 'tailwind';
+
+    protected function rules()
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'apellido' => 'nullable|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($this->userId)],
+            'sucursal_id' => 'nullable|exists:sucursales,id',
+            'activo' => 'boolean',
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'rolesUsuario' => 'array', // Se valida que los roles existan al asignarlos
+            'foto_nueva' => 'nullable|image|max:2048', // Máximo 2MB
+        ];
+    }
+
+    public function mount()
+    {
+        $this->todosLosRoles = Role::where('name', '!=', 'Admin')->pluck('name', 'name')->toArray(); // Excluir Admin para asignación manual masiva si se desea
+        // O si se permite asignar Admin:
+        // $this->todosLosRoles = Role::pluck('name', 'name')->toArray();
+        $this->todasLasSucursales = \App\Models\Sucursal::pluck('nombre', 'id')->toArray();
+    }
+
+    public function render()
+    {
+        $users = User::where(function ($query) {
+            $query->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('email', 'like', '%' . $this->search . '%')
+                  ->orWhere('apellido', 'like', '%' . $this->search . '%');
+        })
+        ->with('sucursal', 'roles') // Cargar relaciones para optimizar
+        ->paginate(10);
+
+        return view('livewire.gestion-usuarios', [
+            'users' => $users,
+        ]);
+    }
+
+    public function create()
+    {
+        $this->resetInputFields();
+        $this->openModal();
+    }
+
+    public function openModal()
+    {
+        $this->isOpen = true;
+    }
+
+    public function closeModal()
+    {
+        $this->isOpen = false;
+        $this->resetErrorBag(); // Limpiar errores de validación al cerrar
+    }
+
+    private function resetInputFields()
+    {
+        $this->userId = null;
+        $this->name = '';
+        $this->apellido = '';
+        $this->email = '';
+        $this->sucursal_id = null;
+        $this->activo = true;
+        $this->password = '';
+        $this->password_confirmation = '';
+        $this->rolesUsuario = [];
+        $this->foto_path = null;
+        $this->foto_nueva = null;
+        $this->resetErrorBag();
+    }
+
+    public function store()
+    {
+        $permission = $this->userId ? 'editar usuario' : 'crear usuario';
+        $this->authorize($permission);
+
+        // Adicionalmente, si se están asignando roles, verificar ese permiso si es diferente
+        if (!empty($this->rolesUsuario) && auth()->user()->cannot('asignar roles')) {
+             // Si el usuario no puede asignar roles pero está intentando hacerlo.
+             // Esto es una doble capa, ya que la UI debería ocultar el campo de roles.
+             // Podríamos lanzar una excepción o un mensaje de error.
+             // Forzamos a que no se modifiquen los roles si no tiene permiso.
+             unset($this->rolesUsuario); // O cargar los roles existentes para no cambiarlos.
+             session()->flash('error', 'No tienes permiso para asignar roles.');
+             // Alternativamente, si la lógica de `syncRoles` abajo maneja bien no tener `rolesUsuario`,
+             // esta comprobación podría ser menos estricta aquí.
+        }
+
+
+        $this->validate();
+
+        $data = [
+            'name' => $this->name,
+            'apellido' => $this->apellido,
+            'email' => $this->email,
+            'sucursal_id' => $this->sucursal_id,
+            'activo' => $this->activo,
+        ];
+
+        if (!empty($this->password)) {
+            $data['password'] = Hash::make($this->password);
+        }
+
+        if ($this->foto_nueva) {
+            // Eliminar foto anterior si existe y se está actualizando una nueva
+            if ($this->userId) {
+                $userOld = User::find($this->userId);
+                if ($userOld && $userOld->foto_path) {
+                    Storage::disk('public')->delete($userOld->foto_path);
+                }
+            }
+            $data['foto_path'] = $this->foto_nueva->store('fotos_usuarios', 'public');
+        }
+
+        $user = User::updateOrCreate(['id' => $this->userId], $data);
+
+        // Sincronizar roles, asegurándose de no quitar el rol 'Admin' a un admin si se está editando a sí mismo (o a otro admin)
+        // y el rol 'Admin' no fue explícitamente deseleccionado (o si se impide deseleccionarlo desde la UI)
+        $adminRole = Role::where('name', 'Admin')->first();
+        $currentRoles = $user->roles->pluck('name')->toArray();
+        $newRoles = $this->rolesUsuario;
+
+        if ($user->id === auth()->id() && $user->hasRole('Admin') && !in_array('Admin', $newRoles)) {
+            // Prevenir que un admin se quite a sí mismo el rol Admin accidentalmente
+            // Opcionalmente, se puede impedir la edición de roles para el usuario Admin en la UI
+            session()->flash('error', 'Un administrador no puede quitarse su propio rol de Admin.');
+        } elseif (in_array('Admin', $currentRoles) && !in_array('Admin', $newRoles) && $user->id !== auth()->id() && $adminRole && !auth()->user()->hasRole('Admin')) {
+            // Prevenir que un no-admin quite el rol Admin a otro usuario
+             // Esta lógica puede ser más compleja dependiendo de las reglas de negocio
+        }
+        else {
+            $rolesToSync = Role::whereIn('name', $newRoles)->get();
+            $user->syncRoles($rolesToSync);
+        }
+
+
+        session()->flash('message',
+            $this->userId ? 'Usuario actualizado exitosamente.' : 'Usuario creado exitosamente.');
+
+        $this->closeModal();
+        $this->resetInputFields();
+    }
+
+    public function edit($id)
+    {
+        $this->authorize('editar usuario');
+        $user = User::with('roles', 'sucursal')->findOrFail($id);
+        $this->userId = $id;
+        $this->name = $user->name;
+        $this->apellido = $user->apellido;
+        $this->email = $user->email;
+        $this->sucursal_id = $user->sucursal_id;
+        $this->activo = $user->activo;
+        $this->rolesUsuario = $user->roles->pluck('name')->toArray();
+        $this->foto_path = $user->foto_path;
+        $this->password = ''; // No cargar hash de contraseña
+        $this->password_confirmation = '';
+        $this->openModal();
+    }
+
+    public function delete($id)
+    {
+        $this->authorize('eliminar usuario');
+        $user = User::findOrFail($id);
+
+        // Prevenir auto-eliminación
+        if ($user->id === auth()->id()) {
+            session()->flash('error', 'No puedes eliminar tu propia cuenta de usuario.');
+            return;
+        }
+
+        // Prevenir eliminar al único usuario Admin (o una lógica más robusta)
+        if ($user->hasRole('Admin')) {
+            $adminCount = Role::where('name', 'Admin')->first()->users()->count();
+            if ($adminCount <= 1) {
+                session()->flash('error', 'No se puede eliminar el último administrador del sistema.');
+                return;
+            }
+        }
+
+        // Eliminar foto de perfil si existe
+        if ($user->foto_path) {
+            Storage::disk('public')->delete($user->foto_path);
+        }
+
+        $user->delete();
+        session()->flash('message', 'Usuario eliminado exitosamente.');
+    }
+
+    public function removePhoto()
+    {
+        if ($this->userId && $this->foto_path) {
+            Storage::disk('public')->delete($this->foto_path);
+            User::where('id', $this->userId)->update(['foto_path' => null]);
+            $this->foto_path = null;
+            session()->flash('message', 'Foto de perfil eliminada.');
+        }
+        $this->foto_nueva = null; // Limpiar si había una nueva seleccionada
+    }
+
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+}
+ 
+Nombre del archivo: InformeEventosAcceso.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\EventoAcceso;
+use App\Models\Miembro;
+use App\Models\Sucursal;
+use Livewire\WithPagination;
+
+class InformeEventosAcceso extends Component
+{
+    use WithPagination;
+
+    public $eventosAcceso; // No es necesario inicializar como array si se usa paginate
+    public $miembros;
+    public $sucursales;
+
+    public $filtroMiembroId = '';
+    public $filtroSucursalId = '';
+    public $filtroFechaDesde = '';
+    public $filtroFechaHasta = '';
+    public $filtroResultado = ''; // 'permitido', 'denegado', o '' para todos
+
+    public $resultadosDisponibles = [
+        'permitido' => 'Permitido',
+        'denegado' => 'Denegado',
+    ];
+
+    // Estos se poblarán en mount() o se definirán estáticamente si son fijos
+    public $tiposEventoDisponibles = [];
+    public $metodosAccesoDisponibles = [];
+
+    protected $paginationTheme = 'tailwind';
+
+    public function mount()
+    {
+        $this->miembros = Miembro::orderBy('apellido')->orderBy('nombre')->get();
+        $this->sucursales = Sucursal::orderBy('nombre')->get();
+
+        // Estos valores deben coincidir con los enums de la migración EventoAcceso
+        $this->tiposEventoDisponibles = [
+            'entrada_permitida' => 'Entrada Permitida',
+            'salida_permitida' => 'Salida Permitida',
+            'intento_denegado_membresia' => 'Denegado (Membresía)',
+            'intento_denegado_codigo' => 'Denegado (Código/QR)',
+            'intento_denegado_desconocido' => 'Denegado (Desconocido)',
+            'intento_denegado_horario' => 'Denegado (Horario)',
+            'intento_denegado_otro' => 'Denegado (Otro)',
+            'entrada_manual_recepcion' => 'Entrada Manual (Recepción)',
+        ];
+        $this->metodosAccesoDisponibles = [
+            'codigo_numerico' => 'Código Numérico',
+            'huella_digital' => 'Huella Digital',
+            'facial' => 'Reconocimiento Facial',
+            'qr_temporal' => 'QR Temporal',
+            'manual_recepcion' => 'Manual Recepción',
+            'desconocido' => 'Desconocido',
+        ];
+
+        // No llamar a aplicarFiltros() aquí para evitar carga inicial pesada sin filtros.
+        // $this->aplicarFiltros();
+        // En su lugar, inicializar $eventosAcceso como una colección paginada vacía o null
+        $this->eventosAcceso = EventoAcceso::whereRaw('0=1')->paginate(15); // Paginate vacío
+    }
+
+    public function aplicarFiltros()
+    {
+        $query = EventoAcceso::query()
+            ->with(['miembro', 'sucursal', 'dispositivoControlAcceso']); // Corregido el nombre de la relación
+
+        if ($this->filtroMiembroId) {
+            $query->where('miembro_id', $this->filtroMiembroId);
+        }
+        if ($this->filtroSucursalId) {
+            $query->where('sucursal_id', $this->filtroSucursalId);
+        }
+        if ($this->filtroFechaDesde) {
+            $query->whereDate('fecha_hora', '>=', $this->filtroFechaDesde);
+        }
+        if ($this->filtroFechaHasta) {
+            $query->whereDate('fecha_hora', '<=', $this->filtroFechaHasta);
+        }
+        if ($this->filtroResultado) {
+            $query->where('resultado', $this->filtroResultado);
+        }
+
+        $this->eventosAcceso = $query->orderBy('fecha_hora', 'desc')->paginate(15);
+        $this->resetPage(); // Resetear paginación al aplicar filtros
+    }
+
+    public function limpiarFiltros()
+    {
+        $this->filtroMiembroId = '';
+        $this->filtroSucursalId = '';
+        $this->filtroFechaDesde = '';
+        $this->filtroFechaHasta = '';
+        $this->filtroResultado = '';
+        // $this->aplicarFiltros(); // Opcional: aplicar inmediatamente o esperar al botón
+        $this->eventosAcceso = EventoAcceso::whereRaw('0=1')->paginate(15); // Paginate vacío
+        $this->resetPage();
+    }
+
+    // Para reactividad instantánea si se usa wire:model.live
+    // public function updated($propertyName)
+    // {
+    //     if (in_array($propertyName, ['filtroMiembroId', 'filtroSucursalId', 'filtroFechaDesde', 'filtroFechaHasta', 'filtroResultado'])) {
+    //         $this->aplicarFiltros();
+    //     }
+    // }
+
+    public function render()
+    {
+        // Si no se usa updated() para cada filtro, $eventosAcceso se actualiza solo con aplicarFiltros()
+        return view('livewire.informe-eventos-acceso', [
+            'eventos_list' => $this->eventosAcceso,
+            'all_miembros' => $this->miembros,
+            'all_sucursales' => $this->sucursales,
+        ]);
+    }
+}
+ 
+Nombre del archivo: PanelMonitoreoDispositivos.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\DispositivoControlAcceso;
+use App\Models\Sucursal;
+
+class PanelMonitoreoDispositivos extends Component
+{
+    public $dispositivos = [];
+    public $sucursales;
+    public $filtroSucursalId = ''; // Default a vacío para "Todas"
+
+    public $estadosDisponibles = [
+        'activo' => 'Activo',
+        'inactivo' => 'Inactivo',
+        'mantenimiento' => 'Mantenimiento',
+    ];
+
+    // Para mantener consistencia con GestionDispositivos, aunque no se use para editar
+    public $tiposDisponibles = [
+        'teclado_numerico' => 'Teclado Numérico',
+        'biometrico_huella' => 'Bimétrico Huella',
+        'biometrico_facial' => 'Biométrico Facial',
+    ];
+
+    public function mount()
+    {
+        $this->sucursales = Sucursal::all();
+        $this->cargarDispositivos();
+        // $estadosDisponibles y $tiposDisponibles ya están inicializados
+    }
+
+    public function cargarDispositivos()
+    {
+        $query = DispositivoControlAcceso::with('sucursal');
+
+        if (!empty($this->filtroSucursalId)) {
+            $query->where('sucursal_id', $this->filtroSucursalId);
+        }
+
+        $this->dispositivos = $query->orderBy('sucursal_id')->orderBy('nombre')->get();
+    }
+
+    public function updatedFiltroSucursalId()
+    {
+        $this->cargarDispositivos();
+    }
+
+    public function render()
+    {
+        // $dispositivos ya se carga a través de cargarDispositivos() en mount y updatedFiltroSucursalId
+        return view('livewire.panel-monitoreo-dispositivos', [
+            'dispositivos_list' => $this->dispositivos, // Pasar con un nombre consistente para la vista
+            'all_sucursales' => $this->sucursales,
+            'current_filtro_sucursal_id' => $this->filtroSucursalId,
+            'estados_mapping' => $this->estadosDisponibles, // Pasar los mappings para la vista
+            'tipos_mapping' => $this->tiposDisponibles,
+        ]);
+    }
+}
+ 
+Nombre del archivo: RegistroAccesoManual.php 
+<?php
+
+namespace App\Livewire;
+
+use Livewire\Component;
+use App\Models\Miembro;
+use App\Models\EventoAcceso;
+use App\Models\DispositivoControlAcceso;
+use App\Models\Sucursal; // Import Sucursal
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth; // Import Auth facade
+
+class RegistroAccesoManual extends Component
+{
+    public string $title = "Control de Acceso Manual";
+
+    public $terminoBusqueda = ''; // Usado para buscar miembro por código, nombre, etc.
+    public $codigoQrIngresado = ''; // Para el input del código QR
+    public $miembroEncontrado;
+
+    public $dispositivosSucursalActual = [];
+    public $dispositivoSeleccionadoId;
+    public $sucursalUsuarioLogueado;
+
+    public function mount()
+    {
+        $user = Auth::user();
+        if ($user && $user->sucursal_id) {
+            $this->sucursalUsuarioLogueado = Sucursal::find($user->sucursal_id);
+            if ($this->sucursalUsuarioLogueado) {
+                $this->dispositivosSucursalActual = DispositivoControlAcceso::where('sucursal_id', $this->sucursalUsuarioLogueado->id)
+                                                                        ->where('estado', 'activo')
+                                                                        ->orderBy('nombre')
+                                                                        ->get();
+            }
+        } elseif ($user && $user->hasRole('Admin')) {
+            // Admin sin sucursal asignada, podría cargar todos o permitir seleccionar sucursal
+            $this->dispositivosSucursalActual = DispositivoControlAcceso::where('estado', 'activo')
+                                                                    ->orderBy('sucursal_id') // Opcional: agrupar por sucursal
+                                                                    ->orderBy('nombre')
+                                                                    ->get();
+        } else {
+            session()->flash('error', 'No se pudo determinar la sucursal del usuario o no hay dispositivos activos disponibles.');
+            $this->dispositivosSucursalActual = [];
+        }
+    }
+
+    public function buscarMiembroParaAcceso()
+    {
+        $this->miembroEncontrado = null;
+        $this->resetErrorBag();
+        session()->forget(['message', 'error_acceso', 'message_acceso']); // Limpiar mensajes flash previos
+
+        $this->validate(['terminoBusqueda' => 'required|min:3'], [
+            'terminoBusqueda.required' => 'El término de búsqueda es obligatorio.',
+            'terminoBusqueda.min' => 'El término de búsqueda debe tener al menos 3 caracteres.'
+        ]);
+
+        $miembro = Miembro::with([
+                            'membresiaActivaActual.tipoMembresia',
+                            'sucursal', // Para la sucursal de registro del miembro
+                            'ultimaMembresiaGeneral.tipoMembresia'
+                        ])
+                        ->where(function ($query) {
+                            $query->where('nombre', 'like', '%' . $this->terminoBusqueda . '%')
+                                  ->orWhere('apellido', 'like', '%' . $this->terminoBusqueda . '%')
+                                  ->orWhere('email', 'like', '%' . $this->terminoBusqueda . '%')
+                                  ->orWhere('codigo_acceso_numerico', $this->terminoBusqueda);
+                        })
+                        ->first();
+
+        if ($miembro) {
+            $this->miembroEncontrado = $miembro;
+            session()->flash('message_acceso', 'Miembro encontrado: ' . $miembro->nombre . ' ' . $miembro->apellido . '. Verifique los detalles y proceda a registrar el acceso si es correcto.');
+        } else {
+            session()->flash('error_acceso', 'Miembro no encontrado con el término de búsqueda: "' . $this->terminoBusqueda . '".');
+            // No registrar evento aquí, se hará en validarYRegistrarAcceso si se intenta un acceso sin miembro.
+        }
+    }
+
+    public function validarYRegistrarAcceso()
+    {
+        // Limpiar mensajes previos para evitar confusión
+        session()->forget(['message_acceso', 'error_acceso', 'message', 'error']);
+
+        $this->validate([
+            'dispositivoSeleccionadoId' => 'required',
+            // 'terminoBusqueda' y 'codigoQrIngresado' se validan según cuál se use
+        ], [
+            'dispositivoSeleccionadoId.required' => 'Debe seleccionar un dispositivo de acceso.',
+        ]);
+
+        $dispositivo = DispositivoControlAcceso::find($this->dispositivoSeleccionadoId);
+        if(!$dispositivo){
+            session()->flash('error_acceso', 'Dispositivo seleccionado no válido.');
+            return;
+        }
+
+        $now = Carbon::now();
+        $sucursalDispositivoId = $dispositivo->sucursal_id;
+        $miembro = null;
+        $metodoAccesoUsadoParaEvento = 'desconocido'; // Default
+
+        if (!empty($this->codigoQrIngresado)) {
+            $this->validate(['codigoQrIngresado' => 'string|min:10']); // Longitud mínima para un QR razonable
+            $metodoAccesoUsadoParaEvento = 'qr_temporal';
+            $miembro = Miembro::where('codigo_qr_temporal', $this->codigoQrIngresado)
+                                ->with(['membresiaActivaActual.tipoMembresia', 'sucursal', 'ultimaMembresiaGeneral.tipoMembresia'])
+                                ->first();
+
+            if (!$miembro) {
+                $this->registrarEventoAcceso(null, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_codigo', 'denegado', 'Código QR no encontrado: ' . $this->codigoQrIngresado, $metodoAccesoUsadoParaEvento);
+                session()->flash('error_acceso', 'ACCESO DENEGADO: Código QR no válido o no encontrado.');
+                $this->resetCamposPostIntento(true); // true para limpiar QR
+                return;
+            }
+
+            if (!$miembro->codigo_qr_expira_at || $miembro->codigo_qr_expira_at->isPast()) {
+                $this->registrarEventoAcceso($miembro->id, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_codigo', 'denegado', 'Código QR expirado.', $metodoAccesoUsadoParaEvento);
+                session()->flash('error_acceso', 'ACCESO DENEGADO: Código QR ha expirado.');
+                $miembro->invalidarCodigoQrTemporal();
+                $this->resetCamposPostIntento(true); // true para limpiar QR
+                return;
+            }
+             // Opcional: Invalidar QR después de un uso exitoso si es de un solo uso
+             // $miembro->invalidarCodigoQrTemporal(); // Si se invalida aquí, no podrá reintentar si falla otra validación
+        } elseif (!empty($this->terminoBusqueda)) {
+            $metodoAccesoUsadoParaEvento = 'manual_recepcion'; // Búsqueda manual
+            // Se asume que buscarMiembroParaAcceso() ya fue llamado desde la UI
+            if ($this->miembroEncontrado &&
+                (str_contains(strtolower($this->miembroEncontrado->nombre . ' ' . $this->miembroEncontrado->apellido), strtolower($this->terminoBusqueda)) ||
+                 $this->miembroEncontrado->email == $this->terminoBusqueda ||
+                 (isset($this->miembroEncontrado->codigo_acceso_numerico) && $this->miembroEncontrado->codigo_acceso_numerico == $this->terminoBusqueda)
+                )
+            ) {
+                $miembro = $this->miembroEncontrado;
+            } else { // Si no hay miembro encontrado o no coincide con la búsqueda actual, intentar buscar de nuevo.
+                $this->buscarMiembroParaAcceso();
+                if(!$this->miembroEncontrado){
+                     $this->registrarEventoAcceso(null, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_desconocido', 'denegado', 'Miembro no encontrado con término: ' . $this->terminoBusqueda, $metodoAccesoUsadoParaEvento);
+                     session()->flash('error_acceso', 'Miembro no encontrado. Verifique el término de búsqueda.');
+                     $this->resetCamposPostIntento(false); // false para no limpiar terminoBusqueda
+                     return;
+                }
+                $miembro = $this->miembroEncontrado;
+            }
+        } else {
+            session()->flash('error_acceso', 'Debe ingresar un término de búsqueda o un código QR.');
+            return;
+        }
+
+        // --- INICIO DE VALIDACIONES COMUNES ---
+        // $miembro ahora debería estar seteado si se encontró por QR o búsqueda manual
+        if (!$miembro) { // Doble chequeo por si acaso
+            $this->registrarEventoAcceso(null, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_desconocido', 'denegado', 'No se pudo identificar al miembro.', $metodoAccesoUsadoParaEvento);
+            session()->flash('error_acceso', 'Error al identificar al miembro.');
+            $this->resetCamposPostIntento(true); // Limpiar todo
+            return;
+        }
+
+        // 1. Acceso del Miembro Habilitado
+        if (!$miembro->acceso_habilitado) {
+            $this->registrarEventoAcceso($miembro->id, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_otro', 'denegado', 'Acceso del miembro deshabilitado.');
+            session()->flash('error', 'ACCESO DENEGADO: El acceso para este miembro está deshabilitado.');
+            $this->resetCamposPostIntento();
+            return;
+        }
+
+        // 2. Membresía Activa
+        $membresiaActiva = $miembro->membresiaActivaActual;
+        if (!$membresiaActiva) {
+            $notas = 'El miembro no tiene una membresía activa o válida.';
+            if ($miembro->ultimaMembresiaGeneral) {
+                 $notas .= ' Última membresía ('.$miembro->ultimaMembresiaGeneral->tipoMembresia->nombre.'): '.$miembro->ultimaMembresiaGeneral->estado.' y venció el '.$miembro->ultimaMembresiaGeneral->fecha_fin->format('d/m/Y');
+            }
+            $this->registrarEventoAcceso($miembro->id, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_membresia', 'denegado', $notas);
+            session()->flash('error', 'ACCESO DENEGADO: ' . $notas);
+            $this->resetCamposPostIntento();
+            return;
+        }
+
+        // 3. Acceso Multisucursal (Simplificado: se compara la sucursal del dispositivo con la sucursal de registro del miembro)
+        // Una lógica más completa podría implicar la sucursal donde se registró la membresía.
+        // O si el TipoMembresia tiene un flag 'permite_todas_sucursales'
+        if (isset($membresiaActiva->tipoMembresia) && !$membresiaActiva->tipoMembresia->acceso_multisucursal) {
+            if ($sucursalDispositivoId != $miembro->sucursal_id) { // Asume que miembro tiene sucursal_id de su registro
+                $this->registrarEventoAcceso($miembro->id, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_otro', 'denegado', 'Membresía no permite acceso a esta sucursal.');
+                session()->flash('error', 'ACCESO DENEGADO: Membresía no válida para esta sucursal.');
+                $this->resetCamposPostIntento();
+                return;
+            }
+        }
+
+        // 4. Reglas de Acceso (Horarios/Días)
+        $diaSemanaActual = $now->dayOfWeek; // 0 para Domingo, 1 para Lunes, ..., 6 para Sábado
+        $horaActual = $now->format('H:i:s');
+
+        $reglasAplicables = \App\Models\ReglaAcceso::where('sucursal_id', $sucursalDispositivoId)
+            ->where(function ($query) use ($membresiaActiva) {
+                $query->whereNull('tipo_membresia_id')
+                      ->orWhere('tipo_membresia_id', $membresiaActiva->tipo_membresia_id);
+            })
+            ->where('dia_semana', $diaSemanaActual) // Reglas para el día de hoy
+            ->get();
+
+        $accesoPermitidoPorHorario = true; // Permitido por defecto si no hay reglas específicas para hoy
+        if ($reglasAplicables->isNotEmpty()) {
+            $accesoPermitidoPorHorario = false; // Si hay reglas para hoy, debe cumplir al menos una
+            foreach ($reglasAplicables as $regla) {
+                if ((!$regla->hora_desde || $horaActual >= $regla->hora_desde) && (!$regla->hora_hasta || $horaActual <= $regla->hora_hasta)) {
+                    $accesoPermitidoPorHorario = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$accesoPermitidoPorHorario) {
+            $this->registrarEventoAcceso($miembro->id, $dispositivo->id, $sucursalDispositivoId, $now, 'intento_denegado_horario', 'denegado', 'Fuera del horario permitido por las reglas de acceso.');
+            session()->flash('error', 'ACCESO DENEGADO: Fuera del horario permitido.');
+            $this->resetCamposPostIntento();
+            return;
+        }
+
+        // Si todas las validaciones pasan
+        $this->registrarEventoAcceso($miembro->id, $dispositivo->id, $sucursalDispositivoId, $now, 'entrada_manual_recepcion', 'permitido', 'Acceso manual permitido por recepción.');
+        session()->flash('message', 'ACCESO PERMITIDO. Membresía: ' . $membresiaActiva->tipoMembresia->nombre . ' (Vence: ' . Carbon::parse($membresiaActiva->fecha_fin)->format('d/m/Y') . ')');
+        $this->resetCamposPostIntento();
+    }
+
+    private function registrarEventoAcceso($miembroId, $dispositivoId, $sucursalId, $fechaHora, $tipoEvento, $resultado, $notas = null, $metodoAcceso = 'desconocido')
+    {
+        EventoAcceso::create([
+            'miembro_id' => $miembroId,
+            'dispositivo_control_acceso_id' => $dispositivoId,
+            'sucursal_id' => $sucursalId,
+            'fecha_hora' => $fechaHora,
+            'tipo_evento' => $tipoEvento,
+            'metodo_acceso_utilizado' => $metodoAcceso,
+            'resultado' => $resultado,
+            'notas' => $notas,
+        ]);
+    }
+
+    private function resetCamposPostIntento($limpiarQr = false, $limpiarBusqueda = false)
+    {
+        if($limpiarBusqueda) {
+            $this->terminoBusqueda = '';
+        }
+        if($limpiarQr) {
+            $this->codigoQrIngresado = '';
+        }
+        $this->miembroEncontrado = null;
+        // No limpiar dispositivo seleccionado por si se realizan varios intentos con el mismo.
+        // Limpiar mensajes flash se hace al inicio de la acción.
+    }
+
+    // private function resetCamposPostIntentoQr() // Ya no es necesario, se usa resetCamposPostIntento(true)
+    // {
+    //     $this->codigoQrIngresado = '';
+    //     $this->miembroEncontrado = null;
+    // }
+
+
+    // public function cargarUltimosAccesos() // Eliminado por ahora
+    // {
+    // }
+
+    public function render()
+    {
+        return view('livewire.registro-acceso-manual')
+            ->layout('layouts.app', ['title' => $this->title]);
+    }
+}
+ 
+Nombre del archivo: User.php 
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles; // Uncomment if using Spatie Laravel Permissions
+
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable, HasRoles; // Uncomment if using Spatie Laravel Permissions
+    // use HasFactory, Notifiable; // Comment this line if using Spatie Laravel Permissions
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'name',
+        'apellido', // Added
+        'email',
+        'password',
+        'sucursal_id', // Added
+        'activo', // Added
+        'foto_path', // Added
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'activo' => 'boolean', // Added
+        ];
+    }
+
+    // Relationships
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    /**
+     * The roles that belong to the user.
+     * Uncomment if using Spatie or manual implementation.
+     */
+    // public function roles(): BelongsToMany
+    // {
+    //    return $this->belongsToMany(Rol::class, 'usuario_rol');
+    // }
+}
+ 

@@ -37,11 +37,13 @@
     @endif
 
     {{-- Botón de Crear Nuevo Tipo --}}
+    @can('crear tipo membresia')
     <div class="flex justify-end items-center mb-6">
         <button wire:click="crearNuevoTipoMembresia" class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:mt-0 sm:w-auto sm:text-sm">
             Crear Nuevo Tipo de Membresía
         </button>
     </div>
+    @endcan
 
     {{-- Tabla de Tipos de Membresía --}}
     <div class="bg-white shadow-md rounded-lg overflow-x-auto">
@@ -71,12 +73,16 @@
                             <div class="text-sm text-neutral-700">${{ number_format($tipo->precio, 2) }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            @can('editar tipo membresia')
                             <button wire:click="editarTipoMembresia({{ $tipo->id }})" class="text-primary hover:text-primary-dark font-semibold">
                                 Editar
                             </button>
+                            @endcan
+                            @can('eliminar tipo membresia')
                             <button wire:click="confirmarEliminacion({{ $tipo->id }})" class="text-danger hover:text-danger-dark font-semibold ml-3">
                                 Eliminar
                             </button>
+                            @endcan
                         </td>
                     </tr>
                 @empty

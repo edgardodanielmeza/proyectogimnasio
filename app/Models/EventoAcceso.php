@@ -14,11 +14,12 @@ class EventoAcceso extends Model
 
     protected $fillable = [
         'miembro_id',
-        'dispositivo_control_acceso_id',
         'sucursal_id',
         'fecha_hora',
         'tipo_acceso_intentado',
+        'metodo_acceso_utilizado',
         'resultado',
+        'notas',
     ];
 
     protected $casts = [

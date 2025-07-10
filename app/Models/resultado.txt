@@ -1,0 +1,709 @@
+Nombre del archivo: CategoriaProducto.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class CategoriaProducto extends Model
+{
+    use HasFactory;
+
+    protected $table = 'categorias_producto';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+    ];
+
+    public function productos(): HasMany
+    {
+        return $this->hasMany(Producto::class);
+    }
+}
+ 
+Nombre del archivo: DispositivoControlAcceso.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+class DispositivoControlAcceso extends Model
+{
+    use HasFactory;
+
+    protected $table = 'dispositivos_control_acceso';
+
+    protected $fillable = [
+        'sucursal_id',
+        'nombre',
+        'tipo_dispositivo',
+        'identificador_dispositivo',
+        'estado',
+        'ip_address',
+        'mac_address',
+        'puerto',
+        'configuracion_adicional',
+    ];
+
+    protected $casts = [
+        'configuracion_adicional' => 'array',
+        'puerto' => 'integer',
+    ];
+
+    // Constantes para tipos de dispositivo
+    public const TIPO_TECLADO_NUMERICO = 'teclado_numerico';
+    public const TIPO_BIOMETRICO_HUELLA = 'biometrico_huella';
+    public const TIPO_BIOMETRICO_FACIAL = 'biometrico_facial';
+    public const TIPO_LECTOR_QR = 'lector_qr';
+    public const TIPO_OTRO = 'otro';
+
+    public static $tiposDispositivo = [
+        self::TIPO_TECLADO_NUMERICO => 'Teclado Numérico',
+        self::TIPO_BIOMETRICO_HUELLA => 'Biométrico Huella',
+        self::TIPO_BIOMETRICO_FACIAL => 'Biométrico Facial',
+        self::TIPO_LECTOR_QR => 'Lector QR',
+        self::TIPO_OTRO => 'Otro',
+    ];
+
+    // Constantes para estados del dispositivo
+    public const ESTADO_ACTIVO = 'activo';
+    public const ESTADO_INACTIVO = 'inactivo';
+    public const ESTADO_ERROR = 'error';
+    public const ESTADO_MANTENIMIENTO = 'mantenimiento';
+
+    public static $estadosDispositivo = [
+        self::ESTADO_ACTIVO => 'Activo',
+        self::ESTADO_INACTIVO => 'Inactivo',
+        self::ESTADO_ERROR => 'Error',
+        self::ESTADO_MANTENIMIENTO => 'Mantenimiento',
+    ];
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    public function eventosAcceso(): HasMany
+    {
+        // Asumiendo que la FK en EventoAcceso es 'dispositivo_control_acceso_id' o 'dispositivo_id'
+        // Ajusta 'dispositivo_id' si el nombre de la FK es diferente.
+        return $this->hasMany(EventoAcceso::class, 'dispositivo_id');
+    }
+}
+ 
+Nombre del archivo: EventoAcceso.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class EventoAcceso extends Model
+{
+    use HasFactory;
+
+    protected $table = 'eventos_acceso';
+
+    protected $fillable = [
+        'miembro_id',
+        'dispositivo_control_acceso_id', // Nombre de FK consistente con la migración
+        'sucursal_id',
+        'fecha_hora',
+        'tipo_evento',
+        'metodo_acceso_utilizado',
+        'resultado',
+        'notas',
+    ];
+
+    protected $casts = [
+        'fecha_hora' => 'datetime',
+    ];
+
+    public function miembro(): BelongsTo
+    {
+        return $this->belongsTo(Miembro::class);
+    }
+
+    public function dispositivoControlAcceso(): BelongsTo
+    {
+        return $this->belongsTo(DispositivoControlAcceso::class);
+    }
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+}
+ 
+Nombre del archivo: Membresia.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Membresia extends Model
+{
+    use HasFactory;
+
+    protected $table = 'membresias';
+
+    protected $fillable = [
+        'miembro_id',
+        'tipo_membresia_id',
+        'fecha_inicio',
+        'fecha_fin',
+        'estado',
+        'renovacion_automatica',
+    ];
+
+    protected $casts = [
+        'fecha_inicio' => 'date',
+        'fecha_fin' => 'date',
+        'renovacion_automatica' => 'boolean',
+    ];
+
+    public function miembro(): BelongsTo
+    {
+        return $this->belongsTo(Miembro::class);
+    }
+
+    public function tipoMembresia(): BelongsTo
+    {
+        return $this->belongsTo(TipoMembresia::class);
+    }
+
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(Pago::class);
+    }
+}
+ 
+Nombre del archivo: Miembro.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+class Miembro extends Model
+{
+    use HasFactory;
+
+    protected $table = 'miembros';
+
+    protected $fillable = [
+        'nombre',
+        'apellido',
+        'direccion',
+        'telefono',
+        'email',
+        'fecha_nacimiento',
+        'foto_path',
+        'codigo_acceso_numerico',
+        'plantilla_huella',
+        'acceso_habilitado',
+        'sucursal_id',
+        'codigo_qr_temporal',
+        'codigo_qr_expira_at',
+    ];
+
+    protected $casts = [
+        'fecha_nacimiento' => 'date',
+        'acceso_habilitado' => 'boolean', // Asegurar que este cast esté presente
+        'codigo_qr_expira_at' => 'datetime',
+        // 'codigo_acceso_numerico' => 'hashed', // Considerar si se hashea
+    ];
+
+    public function membresias(): HasMany
+    {
+        return $this->hasMany(Membresia::class)->orderBy('fecha_fin', 'desc');
+    }
+
+    public function latestMembresia(): HasOne // Generalmente la que termina más tarde o se creó más tarde
+    {
+        return $this->hasOne(Membresia::class)->orderBy('fecha_fin', 'desc')->orderBy('created_at', 'desc');
+    }
+
+    public function membresiaActivaActual(): HasOne
+    {
+        return $this->hasOne(Membresia::class)
+                    ->where('estado', 'activa')
+                    ->where('fecha_inicio', '<=', now()->format('Y-m-d'))
+                    ->where('fecha_fin', '>=', now()->format('Y-m-d'))
+                    ->orderBy('fecha_fin', 'desc'); // En caso de solapamientos (raro), la que termina más tarde
+    }
+
+    // Para obtener la última membresía registrada, sin importar su estado, útil si no hay ninguna activa
+    public function ultimaMembresiaGeneral(): HasOne
+    {
+        return $this->hasOne(Membresia::class)
+                        ->orderBy('fecha_inicio', 'desc') // La que comenzó más recientemente
+                        ->orderBy('id', 'desc'); // O por created_at para la más nueva registrada
+    }
+
+    public function eventosAcceso(): HasMany
+    {
+        return $this->hasMany(EventoAcceso::class);
+    }
+
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(Pago::class);
+    }
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    // --- Lógica de Código QR Temporal ---
+
+    public function generarCodigoQrTemporal($minutosParaExpirar = 60)
+    {
+        $this->codigo_qr_temporal = \Illuminate\Support\Str::random(40);
+        $this->codigo_qr_expira_at = \Carbon\Carbon::now()->addMinutes($minutosParaExpirar);
+        $this->save();
+
+        return $this->codigo_qr_temporal;
+    }
+
+    public function invalidarCodigoQrTemporal()
+    {
+        $this->codigo_qr_temporal = null;
+        $this->codigo_qr_expira_at = null;
+        $this->save();
+    }
+}
+ 
+Nombre del archivo: Pago.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Pago extends Model
+{
+    use HasFactory;
+
+    protected $table = 'pagos';
+
+    protected $fillable = [
+        'miembro_id',
+        'membresia_id',
+        'monto',
+        'fecha_pago',
+        'metodo_pago',
+        'referencia_pago',
+        'factura_generada',
+    ];
+
+    protected $casts = [
+        'monto' => 'decimal:2',
+        'fecha_pago' => 'date',
+        'factura_generada' => 'boolean',
+    ];
+
+    public function miembro(): BelongsTo
+    {
+        return $this->belongsTo(Miembro::class);
+    }
+
+    public function membresia(): BelongsTo
+    {
+        return $this->belongsTo(Membresia::class);
+    }
+}
+ 
+Nombre del archivo: Permiso.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+// use Spatie\Permission\Models\Permission as SpatiePermission; // Uncomment if using Spatie Laravel Permissions
+
+// class Permiso extends SpatiePermission // Uncomment if using Spatie Laravel Permissions
+class Permiso extends Model // Comment this line if using Spatie Laravel Permissions
+{
+    use HasFactory;
+
+    protected $table = 'permisos'; // Ensure this matches your table name if not using Spatie
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+        'guard_name', // Needed for Spatie
+    ];
+
+    // Comment out if using Spatie, as it handles this
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Rol::class, 'rol_permiso');
+    }
+}
+ 
+Nombre del archivo: Producto.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Producto extends Model
+{
+    use HasFactory;
+
+    protected $table = 'productos';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+        'precio_venta',
+        'stock_actual',
+        'categoria_producto_id',
+    ];
+
+    protected $casts = [
+        'precio_venta' => 'decimal:2',
+    ];
+
+    public function categoriaProducto(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaProducto::class);
+    }
+
+    public function ventasDetalle(): HasMany
+    {
+        return $this->hasMany(VentaDetalle::class);
+    }
+}
+ 
+Nombre del archivo: ReglaAcceso.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ReglaAcceso extends Model
+{
+    use HasFactory;
+
+    protected $table = 'reglas_acceso';
+
+    protected $fillable = [
+        'sucursal_id',
+        'tipo_membresia_id',
+        'dia_semana',
+        'hora_desde',
+        'hora_hasta',
+        'descripcion',
+    ];
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    public function tipoMembresia(): BelongsTo
+    {
+        return $this->belongsTo(TipoMembresia::class);
+    }
+}
+ 
+Nombre del archivo: Rol.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+// use Spatie\Permission\Models\Role as SpatieRole; // Uncomment if using Spatie Laravel Permissions
+
+// class Rol extends SpatieRole // Uncomment if using Spatie Laravel Permissions
+class Rol extends Model // Comment this line if using Spatie Laravel Permissions
+{
+    use HasFactory;
+
+    protected $table = 'roles'; // Ensure this matches your table name if not using Spatie
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+        'guard_name', // Needed for Spatie
+    ];
+
+    // Comment out if using Spatie, as it handles this
+    public function permisos(): BelongsToMany
+    {
+        return $this->belongsToMany(Permiso::class, 'rol_permiso');
+    }
+
+    // Comment out if using Spatie, as it handles this
+    public function usuarios(): BelongsToMany
+    {
+        // Assumes you have a User model at App\Models\User
+        return $this->belongsToMany(User::class, 'usuario_rol');
+    }
+}
+ 
+Nombre del archivo: Sucursal.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Sucursal extends Model
+{
+    use HasFactory;
+
+    protected $table = 'sucursales';
+
+    protected $fillable = [
+        'nombre',
+        'direccion',
+        'telefono',
+        'horario_atencion',
+        'logo_path',
+    ];
+    public function users(): HasMany // Relación con usuarios (si un usuario pertenece a una sucursal)
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function dispositivosControlAcceso(): HasMany
+    {
+        return $this->hasMany(DispositivoControlAcceso::class);
+    }
+
+    public function eventosAcceso(): HasMany
+    {
+        return $this->hasMany(EventoAcceso::class);
+    }
+
+    public function miembros(): HasMany
+    {
+        return $this->hasMany(Miembro::class);
+    }
+}
+ 
+Nombre del archivo: TipoMembresia.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class TipoMembresia extends Model
+{
+    use HasFactory;
+
+    protected $table = 'tipos_membresia';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+        'duracion_dias',
+        'precio',
+        'acceso_multisucursal',
+    ];
+
+       protected $casts = [
+        'precio' => 'decimal:2',
+        'duracion_dias' => 'integer',
+        'acceso_multisucursal' => 'boolean',
+    ];
+
+
+       public function membresias(): HasMany
+    {
+        return $this->hasMany(Membresia::class, 'tipo_membresia_id'); // Especificar FK si no sigue convención
+    }
+}
+ 
+Nombre del archivo: User.php 
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
+// use Spatie\Permission\Traits\HasRoles; // Uncomment if using Spatie Laravel Permissions
+
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable, HasRoles; // Uncomment if using Spatie Laravel Permissions
+     //use HasFactory, Notifiable; // Comment this line if using Spatie Laravel Permissions
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'name',
+        'apellido', // Added
+        'email',
+        'password',
+        'sucursal_id', // Added
+        'activo', // Added
+        'foto_path', // Added
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'activo' => 'boolean', // Added
+        ];
+    }
+
+    // Relationships
+
+    public function sucursal(): BelongsTo
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    /**
+     * The roles that belong to the user.
+     * Uncomment if using Spatie or manual implementation.
+     */
+    // public function roles(): BelongsToMany
+    // {
+    //    return $this->belongsToMany(Rol::class, 'usuario_rol');
+    // }
+}
+ 
+Nombre del archivo: Venta.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Venta extends Model
+{
+    use HasFactory;
+
+    protected $table = 'ventas';
+
+    protected $fillable = [
+        'miembro_id',
+        'fecha_venta',
+        'total_venta',
+        'metodo_pago',
+    ];
+
+    protected $casts = [
+        'fecha_venta' => 'datetime',
+        'total_venta' => 'decimal:2',
+    ];
+
+    public function miembro(): BelongsTo
+    {
+        return $this->belongsTo(Miembro::class);
+    }
+
+    public function detalles(): HasMany
+    {
+        return $this->hasMany(VentaDetalle::class);
+    }
+}
+ 
+Nombre del archivo: VentaDetalle.php 
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class VentaDetalle extends Model
+{
+    use HasFactory;
+
+    protected $table = 'ventas_detalle';
+
+    protected $fillable = [
+        'venta_id',
+        'producto_id',
+        'cantidad',
+        'precio_unitario_en_venta',
+        'subtotal',
+    ];
+
+    protected $casts = [
+        'precio_unitario_en_venta' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+    ];
+
+    public function venta(): BelongsTo
+    {
+        return $this->belongsTo(Venta::class);
+    }
+
+    public function producto(): BelongsTo
+    {
+        return $this->belongsTo(Producto::class);
+    }
+}
+ 

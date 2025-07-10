@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('descripcion')->nullable();
             $table->integer('duracion_dias');
             $table->decimal('precio', 10, 2);
+            $table->boolean('acceso_multisucursal')->default(false);
             $table->timestamps();
         });
     }

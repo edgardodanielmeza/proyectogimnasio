@@ -40,14 +40,14 @@
     <div class="bg-white shadow-md rounded-lg p-6 mb-6">
         <form wire:submit.prevent="buscarMiembro" class="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 rtl:space-x-reverse">
             <div class="flex-grow w-full">
-                <label for="terminoBusqueda" class="sr-only">Buscar Miembro</label>
+                <label for="terminoBusqueda" class="text-lg font-semibold text-gray-700 dark:text-gray-400">Registro de Ingreso</label>
                 <input wire:model.lazy="terminoBusqueda" type="text" id="terminoBusqueda"
                        class="w-full px-4 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
                        placeholder="Buscar por nombre, apellido, email o código...">
                 @error('terminoBusqueda') <span class="text-danger text-xs mt-1">{{ $message }}</span> @enderror
             </div>
             <button type="submit"
-                    class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded shadow-md flex items-center justify-center w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-primary-light">
+                    class="mt-3 w-full inline-flex justify-center rounded-md border border-neutral-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                 {{-- <i class="fas fa-search mr-2"></i> --}}
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 Buscar
@@ -59,7 +59,7 @@
     @if($resultadoBusqueda)
         <div class="bg-white shadow-md rounded-lg p-6 center rounded-lg mb-6">
             @if($miembroEncontrado)
-                <div class="flex flex-col sm:flex-row items-center mb-6 pb-6 border-b border-neutral-200">
+                <div class="items-center mb-6 pb-6 border-b border-neutral-200">
                     @if ($miembroEncontrado->foto_path)
                         <img class="h-20 w-20 sm:h-25 sm:w-25 rounded-full object-cover mr-0 sm:mr-6 mb-4 sm:mb-0 shadow-md" src="{{ asset('storage/' . $miembroEncontrado->foto_path) }}" alt="Foto de {{ $miembroEncontrado->nombre }}">
                     @else
@@ -67,22 +67,23 @@
                             <span class="text-3xl sm:text-4xl font-medium leading-none text-neutral-700">{{ strtoupper(substr($miembroEncontrado->nombre, 0, 1) . substr($miembroEncontrado->apellido, 0, 1)) }}</span>
                         </span>
                     @endif
-                    <div class="text-center sm:text-left">
-                        <h3 class="text-2xl font-semibold text-neutral-800">{{ $miembroEncontrado->nombre }} {{ $miembroEncontrado->apellido }}</h3>
-                        <p class="text-sm text-neutral-600">{{ $miembroEncontrado->email }}</p>
-                        <p class="text-sm text-neutral-500">Código: {{ $miembroEncontrado->codigo_acceso_numerico ?? 'N/A' }}</p>
-                        @php
+
+                    <div class="text-center sm:text-right">
+                        <h3 class="text-3xl font-semibold mb-6 pb-6  text-neutral-800">{{ $miembroEncontrado->nombre }} {{ $miembroEncontrado->apellido }}</h3>
+
+
+                         @php
                             $membresiaRelevanteVista = $miembroEncontrado->membresiaActivaActual ?? $miembroEncontrado->ultimaMembresiaGeneral;
                         @endphp
-                        @if($membresiaRelevanteVista)
-                        <p class="text-sm text-neutral-500 mt-1">
-                            Membresía: <span class="font-semibold">{{ $membresiaRelevanteVista->tipoMembresia->nombre ?? 'N/D' }}</span>
-                        </p>
-                        <p class="text-sm text-neutral-500">
-                            Válida hasta: <span class="font-semibold">{{ \Carbon\Carbon::parse($membresiaRelevanteVista->fecha_fin)->format('d/m/Y') }}</span>
-                        </p>
-                        @endif
+                   @if  ($diasRestantes <= 1)
+                             <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
+
+                                 <p class="font-bold">¡Atención!</p>
+                                 <p>Faltan    {{ $diasRestantes }}  días para la fecha de fin de tu membresía.</p>
+                             </div>
+                    @endif
                     </div>
+
                 </div>
             @endif
 

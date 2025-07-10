@@ -1,0 +1,11 @@
+@echo off
+setlocal enabledelayedexpansion
+rem Listar archivos .php
+for %%f in (*.php) do (
+    echo Nombre del archivo: %%f
+    type "%%f"
+    echo.
+)
+
+endlocal
+pause

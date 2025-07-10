@@ -60,6 +60,18 @@
             </div>
             <form wire:submit.prevent="{{ $miembroSeleccionadoId ? 'actualizarMiembro' : 'guardarMiembro' }}" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label for="documento_identidad" class="block text-sm font-medium text-neutral-700">Documento de Identidad</label>
+                        <input wire:model.defer="documento_identidad" type="text" id="documento_identidad" class="mt-1 block w-full border-neutral-300 rounded-md shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                        @error('documento_identidad') <span class="text-danger text-xs">{{ $message }}</span> @enderror
+                    </div>
+                    {{-- <div class="col-span-6 sm:col-span-3">
+                        <label for="documento_identidad" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Documento de Identidad</label>
+                        <input type="text" wire:model.defer="documento_identidad" id="documento_identidad" name="documento_identidad"
+                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                        @error('documento_identidad') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div> --}}
+
                     <div>
                         <label for="nombre" class="block text-sm font-medium text-neutral-700">Nombre</label>
                         <input wire:model.defer="nombre" type="text" id="nombre" class="mt-1 block w-full border-neutral-300 rounded-md shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
@@ -214,6 +226,7 @@
             <thead class="bg-neutral-100">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Foto</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Doc. Identidad</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Nombre</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Email</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Sucursal</th>
@@ -234,6 +247,8 @@
                                 </span>
                             @endif
                         </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-700">{{ $miembro->documento_identidad ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-neutral-900">{{ $miembro->nombre }} {{ $miembro->apellido }}</div>
                             <div class="text-sm text-neutral-500">{{ $miembro->telefono ?? '' }}</div>
